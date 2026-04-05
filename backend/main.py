@@ -90,8 +90,8 @@ async def health_check():
 # 1. Mount the frontend folders
 # Use absolute path based on this file's location
 app_dir = os.path.dirname(os.path.abspath(__file__))
-public_path = os.path.abspath(os.path.join(app_dir, "..", "..", "public"))
-frontend_path = os.path.abspath(os.path.join(app_dir, "..", "..", "frontend-app"))
+public_path = os.path.abspath(os.path.join(app_dir, "..", "public"))
+frontend_path = os.path.abspath(os.path.join(app_dir, "..", "frontend-app"))
 
 # Mount public first so its files are preferred if they exist
 if os.path.exists(public_path):
