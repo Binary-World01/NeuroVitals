@@ -181,3 +181,46 @@ CREATE POLICY "Allow update google_fit_tokens" ON google_fit_tokens FOR UPDATE U
 -- CREATE POLICY "Allow public read from prescriptions"
 --   ON storage.objects FOR SELECT
 --   USING (bucket_id = 'prescriptions');
+
+-- ================================================================
+-- COMMUNITY SURVEILLANCE & AI RECORDS
+-- ================================================================
+
+CREATE TABLE IF NOT EXISTS records (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  form_id TEXT UNIQUE,
+  name TEXT,
+  age INTEGER,
+  gender TEXT,
+  symptoms TEXT,
+  severity INTEGER,
+  duration INTEGER,
+  ai_response TEXT,
+  image_url TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS admin (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  patient_id UUID REFERENCES records(id) ON DELETE SET NULL,
+  latitude NUMERIC(10,7),
+  longitude NUMERIC(10,7),
+  location_city TEXT,
+  location_region TEXT,
+  location_country TEXT,
+  location TEXT,
+  symptoms TEXT,
+  disease_category TEXT,
+  disease_type TEXT,
+  spreadable BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+ALTER TABLE records ENABLE ROW LEVEL SECURITY;
+ALTER TABLE admin ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Allow public insert records" ON records FOR INSERT WITH CHECK (true);
+CREATE POLICY "Allow public select records" ON records FOR SELECT USING (true);
+CREATE POLICY "Allow public insert admin" ON admin FOR INSERT WITH CHECK (true);
+CREATE POLICY "Allow public select admin" ON admin FOR SELECT USING (true);
+CREATE POLICY "Allow public update admin" ON admin FOR UPDATE USING (true);

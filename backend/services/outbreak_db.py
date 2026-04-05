@@ -75,13 +75,17 @@ def save_to_database(
         disease_info = DiseaseClassifier.classify_disease(ai_response)
         form_id = data.get("form_id")
 
+        symptoms_data = data.get("symptoms", "")
+        if isinstance(symptoms_data, list):
+            symptoms_data = ", ".join([str(s) for s in symptoms_data])
+
         patient_record = {
-            "name": data["name"],
-            "age": data["age"],
-            "gender": data["gender"],
-            "symptoms": data["symptoms"],
-            "severity": data["severity"],
-            "duration": data["duration"],
+            "name": data.get("name") or "Anonymous",
+            "age": data.get("age", 0),
+            "gender": data.get("gender") or "Unknown",
+            "symptoms": symptoms_data,
+            "severity": data.get("severity", 0),
+            "duration": data.get("duration", 0),
             "ai_response": ai_response,
             "image_url": image_url,
             "created_at": datetime.now().isoformat(),

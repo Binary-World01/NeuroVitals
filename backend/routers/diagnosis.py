@@ -6,6 +6,8 @@ from datetime import datetime
 from schemas import PatientProfile, DiagnosisResult
 from services.llm_service import llm_service
 
+from services.outbreak_db import save_to_database
+
 router = APIRouter(prefix="/diagnosis", tags=["Diagnosis"])
 
 
@@ -15,6 +17,29 @@ async def analyze_symptoms(patient: PatientProfile):
     try:
         result = llm_service.analyze_symptoms(patient)
         
+        # --- PERSIST TO DATABASE ---
+        # Flatten symptoms if it's a list
+        symptoms_str = patient.symptoms
+        if isinstance(symptoms_str, list):
+            symptoms_str = ", ".join([f"{s.description} (severity {s.severity})" for s in symptoms_str])
+        
+        db_data = {
+            "name": patient.name or "Anonymous",
+            "age": patient.age,
+            "gender": patient.gender,
+            "symptoms": symptoms_str,
+            "severity": 0, # Default for this schema
+            "duration": 0, # Default for this schema
+            "email": patient.email,
+            "form_id": patient.patient_id
+        }
+        
+        save_to_database(
+            db_data, 
+            ai_response=result.get("primary_diagnosis", ""),
+            location_data=patient.location_data
+        )
+
         return DiagnosisResult(
             primary_diagnosis=result["primary_diagnosis"],
             confidence=result["confidence"],

@@ -21,6 +21,9 @@ class PatientProfile(BaseModel):
     age: int
     gender: str
     symptoms: Union[List[SymptomInput], str]
+    name: Optional[str] = None
+    email: Optional[str] = None
+    location_data: Optional[dict] = None
     medical_history: Optional[List[str]] = Field(default_factory=list)
     current_medications: Optional[List[str]] = Field(default_factory=list)
 
