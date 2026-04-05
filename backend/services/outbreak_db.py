@@ -207,7 +207,7 @@ def get_all_patients_for_admin() -> list:
         result = (
             _get_sb()
             .table("admin")
-            .select("*, records:patient_id (*)")
+            .select("*")
             .order("created_at", desc=True)
             .execute()
         )

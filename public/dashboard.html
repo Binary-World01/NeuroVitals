@@ -28,6 +28,10 @@
     <script src="js/utils.js"></script>
     <script src="js/supabase-config.js"></script>
     <script src="js/vitals-streamer.js"></script>
+    <script>
+        // Ensure API base helper is available
+        window.getApiBase = () => '/api';
+    </script>
 
     <script>
         tailwind.config = {
@@ -1131,6 +1135,10 @@
         }
 
         async function fetchMedicationData(email) {
+            if (!window.supabaseClient) {
+                window.addEventListener('supabaseReady', () => fetchMedicationData(email), { once: true });
+                return;
+            }
             try {
                 // Try fetching from dedicated medications API
                 const res = await fetch(`${window.getApiBase()}/medications/${email}`);
@@ -1163,6 +1171,11 @@
         let globalEmergencyContacts = [];
 
         async function loadEmergencyContacts(email) {
+            if (!window.supabaseClient) {
+                console.log("Waiting for Supabase before loading contacts...");
+                window.addEventListener('supabaseReady', () => loadEmergencyContacts(email), { once: true });
+                return;
+            }
             console.log(`Attempting to load emergency contacts for: ${email}`);
             try {
                 // 1. Get the formid for this user
@@ -1291,12 +1304,20 @@
 
         // Trigger check on load
         document.addEventListener('DOMContentLoaded', () => {
-            setTimeout(checkLocationAuth, 1000); // Small delay for aesthetics
+            const user = JSON.parse(localStorage.getItem('neurovitals_currentUser') || '{}');
+            const email = user.email || localStorage.getItem('gfit_email');
             
+            setTimeout(checkLocationAuth, 1000); 
+            
+            if (email) {
+                loadEmergencyContacts(email);
+                fetchMedicationData(email);
+            }
+
             // Start Vitals Streamer if connected
             if (!window.vitalsStreamer && typeof VitalsStreamer !== 'undefined') {
-                window.vitalsStreamer = new VitalsStreamer();
-                window.vitalsStreamer.init();
+                window.vitalsStreamer = VitalsStreamer; // It's an object, not a class
+                VitalsStreamer.start();
             }
         });
     </script>

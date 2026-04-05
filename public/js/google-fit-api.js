@@ -539,7 +539,7 @@ const GoogleFitAPI = (() => {
         };
 
         try {
-            const response = await fetch('/api/save-vitals', {
+            const response = await fetch('/api/vitals/save-vitals', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
