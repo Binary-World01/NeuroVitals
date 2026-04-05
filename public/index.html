@@ -1285,28 +1285,28 @@
             }
 
             try {
-                // Supabase Auth Login
-                const { data, error } = await window.supabaseClient.auth.signInWithPassword({
-                    email: email,
-                    password: password,
-                });
+                // Custom Table Login (Using 'profiles' table)
+                const { data, error } = await window.supabaseClient
+                    .from('profiles')
+                    .select('*')
+                    .eq('email', email)
+                    .eq('password', password)
+                    .single();
 
-                if (error) throw error;
+                if (error || !data) throw new Error(error ? error.message : "Invalid email or password");
 
-                if (data.user) {
-                    localStorage.removeItem('neurovitals_location');
-                    localStorage.removeItem('current_admin_node_id');
-                    localStorage.removeItem('last_symptom_analysis');
+                localStorage.removeItem('neurovitals_location');
+                localStorage.removeItem('current_admin_node_id');
+                localStorage.removeItem('last_symptom_analysis');
 
-                    const { data: userProfile } = await window.supabaseClient
-                        .from('users')
-                        .select('*')
-                        .eq('email', data.user.email)
-                        .single();
-                    
-                    localStorage.setItem('neurovitals_currentUser', JSON.stringify({ ...data.user, ...userProfile }));
-                    window.location.href = 'dashboard.html';
-                }
+                // Store user info in localStorage
+                localStorage.setItem('neurovitals_currentUser', JSON.stringify({ 
+                    email: data.email, 
+                    full_name: data.name,
+                    ...data 
+                }));
+                
+                window.location.href = 'dashboard.html';
             } catch (err) {
                 alert('Login Failed: ' + err.message);
             }
@@ -1320,19 +1320,32 @@
             const password = document.getElementById('signUpPassword').value;
 
             try {
-                const { data, error } = await window.supabaseClient.auth.signUp({
-                    email: email,
-                    password: password,
-                    options: { data: { full_name: name } }
-                });
+                // Check if user already exists
+                const { data: existingUser } = await window.supabaseClient
+                    .from('profiles')
+                    .select('email')
+                    .eq('email', email)
+                    .single();
+                
+                if (existingUser) throw new Error("Email already registered");
+
+                // Insert into custom 'profiles' table
+                const { data, error } = await window.supabaseClient
+                    .from('profiles')
+                    .insert([
+                        { name: name, email: email, password: password }
+                    ])
+                    .select()
+                    .single();
 
                 if (error) throw error;
 
                 localStorage.removeItem('neurovitals_location');
                 localStorage.removeItem('current_admin_node_id');
                 localStorage.removeItem('last_symptom_analysis');
+                
                 localStorage.setItem('neurovitals_currentUser', JSON.stringify({ 
-                    ...data.user, 
+                    email: email, 
                     full_name: name 
                 }));
                 window.location.href = 'onboarding.html';

@@ -585,20 +585,33 @@
             const activeUser = user || JSON.parse(localStorage.getItem('neurovitals_currentUser'));
             const email = activeUser.email;
 
-            // Fetch profile by email
+            // 1. Fetch profile by email from 'profiles' table
             const { data: profile } = await window.supabaseClient
-                .from('users')
+                .from('profiles')
                 .select('*')
                 .eq('email', email)
                 .single();
 
-            const name = profile?.name || activeUser.user_metadata?.full_name || email.split('@')[0];
+            // 2. Fetch medical form data from 'medical_forms' table
+            const { data: medicalRecord } = await window.supabaseClient
+                .from('medical_forms')
+                .select('*')
+                .eq('user_email', email)
+                .single();
+
+            const name = profile?.name || medicalRecord?.full_name || activeUser.full_name || email.split('@')[0];
             const greeting = getGreeting() + ', ' + name;
 
             document.getElementById('headerGreeting').innerText = greeting;
             document.getElementById('headerUserName').innerText = name;
             document.getElementById('dropdownName').innerText = name;
             if (email) document.getElementById('dropdownEmail').innerText = email;
+
+            // Store current medical data in local storage for shared page use
+            if (medicalRecord) {
+                activeUser.medicalRecord = medicalRecord;
+                localStorage.setItem('neurovitals_currentUser', JSON.stringify(activeUser));
+            }
 
             // Initialize Charts
             initCharts();
@@ -1125,22 +1138,52 @@
 
         async function fetchMedicationData(email) {
             try {
+                // Try fetching from dedicated medications API
                 const res = await fetch(`${window.getApiBase()}/medications/${email}`);
                 const meds = await res.json();
                 const activeMed = meds.find(m => m.is_active);
                 
                 if (activeMed) {
-                    const nameEl = document.querySelector('.med-name');
-                    const doseEl = nameEl.nextElementSibling;
-                    const nextDoseLabel = document.querySelector('.med-container').previousElementSibling.querySelector('span');
-                    
-                    nameEl.textContent = activeMed.name;
-                    doseEl.textContent = activeMed.dosage || 'No dosage';
-                    if (nextDoseLabel && activeMed.time_of_day?.length > 0) {
-                        nextDoseLabel.textContent = `Next dose: ${activeMed.time_of_day[0]}`;
+                    updateMedDisplay(activeMed.name, activeMed.dosage, activeMed.time_of_day?.[0]);
+                } else {
+                    // Fallback to medical_forms if no active med found in dedicated table
+                    const { data } = await window.supabaseClient.from('medical_forms').select('current_medications').eq('user_email', email).single();
+                    if (data?.current_medications) {
+                        updateMedDisplay(data.current_medications, "As prescribed", "Daily");
                     }
                 }
             } catch (err) { console.warn("Medication fetch failed", err); }
+        }
+
+        function updateMedDisplay(name, dose, time) {
+            const nameEl = document.querySelector('.med-name');
+            const medContainer = document.querySelector('.med-container');
+            if (nameEl) nameEl.textContent = name;
+            if (nameEl && nameEl.nextElementSibling) nameEl.nextElementSibling.textContent = dose || 'No dosage';
+            if (medContainer && medContainer.previousElementSibling) {
+                const label = medContainer.previousElementSibling.querySelector('span');
+                if (label) label.textContent = time ? `Next dose: ${time}` : 'Scheduled';
+            }
+        }
+
+        async function loadEmergencyContacts(email) {
+            try {
+                const { data, error } = await window.supabaseClient
+                    .from('medical_forms')
+                    .select('emergency_contacts')
+                    .eq('user_email', email)
+                    .single();
+
+                if (data && data.emergency_contacts) {
+                    const contacts = Array.isArray(data.emergency_contacts) ? data.emergency_contacts : JSON.parse(data.emergency_contacts || "[]");
+                    if (contacts.length > 0) {
+                        const primary = contacts[0];
+                        // Update UI placeholders if they exist
+                        // For example, if there's a text saying "alerting Sister"
+                        document.body.innerHTML = document.body.innerHTML.replace('Sister', primary.relationship || 'Emergency Contact');
+                    }
+                }
+            } catch (e) { console.warn("Emergency contact load failed", e); }
         }
 
         // Action Buttons (Placeholders)

@@ -6,6 +6,9 @@
     <meta content="width=device-width, initial-scale=1.0" name="viewport" />
     <title>Onboarding | Neuro-Vitals</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/supabase-config.js"></script>
+    <script src="js/utils.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@300;400;500;600;700;800;900&display=swap"
         rel="stylesheet" />
     <link
@@ -493,7 +496,7 @@
             }
         }
 
-        function completeOnboarding() {
+        async function completeOnboarding() {
             // Collect all data
             const contactEntries = document.querySelectorAll('.contact-entry');
             const emergencyContacts = Array.from(contactEntries).map(entry => ({
@@ -502,37 +505,48 @@
                 phone: entry.querySelector('.emergencyPhone').value
             }));
 
+            // Get current user
+            const currentUser = JSON.parse(localStorage.getItem('neurovitals_currentUser'));
+            if (!currentUser || !currentUser.email) {
+                alert("Session expired. Please log in again.");
+                window.location.href = 'index.html';
+                return;
+            }
+
             const onboardingData = {
-                name: document.getElementById('name').value,
-                age: document.getElementById('age').value,
+                user_email: currentUser.email,
+                full_name: document.getElementById('name').value,
+                age: parseInt(document.getElementById('age').value) || 0,
                 gender: document.getElementById('gender').value,
                 phone: document.getElementById('phone').value,
-                bloodType: document.getElementById('bloodType').value,
-                conditions: document.getElementById('conditions').value,
-                medications: document.getElementById('medications').value,
+                blood_type: document.getElementById('bloodType').value,
+                chronic_conditions: document.getElementById('conditions').value,
+                current_medications: document.getElementById('medications').value,
                 supplements: document.getElementById('supplements').value,
-                drugAllergies: document.getElementById('drugAllergies').value,
-                foodAllergies: document.getElementById('foodAllergies').value,
-                emergencyContacts: emergencyContacts
+                drug_allergies: document.getElementById('drugAllergies').value,
+                food_allergies: document.getElementById('foodAllergies').value,
+                emergency_contacts: emergencyContacts,
+                updated_at: new Date().toISOString()
             };
 
-            // Get current user and update their data
-            const currentUser = JSON.parse(localStorage.getItem('neurovitals_currentUser'));
-            if (currentUser) {
+            try {
+                // Save to 'medical_forms' table
+                const { data, error } = await window.supabaseClient
+                    .from('medical_forms')
+                    .upsert([onboardingData], { onConflict: 'user_email' });
+
+                if (error) throw error;
+
+                // Also update local storage for immediate dashboard use
                 currentUser.onboardingData = onboardingData;
                 currentUser.onboardingComplete = true;
                 localStorage.setItem('neurovitals_currentUser', JSON.stringify(currentUser));
 
-                // Update in users array
-                const users = JSON.parse(localStorage.getItem('neurovitals_users')) || [];
-                const userIndex = users.findIndex(u => u.email === currentUser.email);
-                if (userIndex !== -1) {
-                    users[userIndex] = currentUser;
-                    localStorage.setItem('neurovitals_users', JSON.stringify(users));
-                }
+                window.location.href = 'dashboard.html';
+            } catch (err) {
+                console.error("Error saving medical form:", err);
+                alert("Error saving your profile: " + err.message);
             }
-
-            window.location.href = 'dashboard.html';
         }
 
         // Initialize
