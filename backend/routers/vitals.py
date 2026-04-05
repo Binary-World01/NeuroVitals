@@ -9,7 +9,7 @@ import os
 
 router = APIRouter(prefix="/vitals", tags=["Vitals"])
 
-from app.config import settings
+from config import settings
 
 # Supabase client
 try:

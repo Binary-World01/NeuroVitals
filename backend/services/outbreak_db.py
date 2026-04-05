@@ -12,8 +12,8 @@ import logging
 from datetime import datetime, timedelta
 
 from supabase import create_client, Client
-from app.config import settings
-from app.services.disease_classifier import DiseaseClassifier
+from config import settings
+from services.disease_classifier import DiseaseClassifier
 
 logger = logging.getLogger(__name__)
 

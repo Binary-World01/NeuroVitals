@@ -4,14 +4,14 @@ LLM Service - Handles AI model interactions
 import os
 import json
 from typing import Dict, Any
-from app.schemas import PatientProfile
+from schemas import PatientProfile
 
 
 class LLMService:
     """Service for LLM interactions"""
     
     def __init__(self):
-        from app.config import settings
+        from config import settings
         self.provider = settings.MODEL_PROVIDER
         self.api_key = settings.OPENAI_API_KEY
         self.github_token = settings.GITHUB_TOKEN

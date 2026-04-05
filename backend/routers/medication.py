@@ -4,8 +4,8 @@ import json
 import os
 import uuid
 from datetime import datetime
-from app.schemas import Medication, MedicationCreate
-from app.services.outbreak_llm import scan_prescription
+from schemas import Medication, MedicationCreate
+from services.outbreak_llm import scan_prescription
 
 router = APIRouter(prefix="/api/medications", tags=["Medication"])
 

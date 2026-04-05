@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any
 from datetime import datetime
 
-from app.services.risk_engine import (
+from services.risk_engine import (
     get_or_create_user,
     update_user_profile,
     save_daily_log,
@@ -15,7 +15,7 @@ from app.services.risk_engine import (
     load_user_history,
     run_risk_prediction,
 )
-from app.services.ocr_helper import extract_text_from_image
+from services.ocr_helper import extract_text_from_image
 
 router = APIRouter(prefix="/api/risk", tags=["Risk Engine"])
 

@@ -2,7 +2,7 @@
 Temporal Health Trajectory - 6-month forecasting
 """
 from typing import Dict, Any
-from app.schemas import PatientProfile
+from schemas import PatientProfile
 
 
 class TrajectoryService:

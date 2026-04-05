@@ -10,7 +10,7 @@ class AdversarialEngine:
     """Adversarial diagnosis system"""
     
     def __init__(self):
-        from app.config import settings
+        from config import settings
         self.provider = settings.MODEL_PROVIDER
         self.openai_key = settings.OPENAI_API_KEY
         self.github_token = settings.GITHUB_TOKEN

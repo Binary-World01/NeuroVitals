@@ -3,8 +3,8 @@ Adversarial Router - Adversarial diagnosis debate
 """
 from fastapi import APIRouter, HTTPException
 from datetime import datetime
-from app.schemas import PatientProfile, AdversarialDebateResult
-from app.services.adversarial_engine import adversarial_engine
+from schemas import PatientProfile, AdversarialDebateResult
+from services.adversarial_engine import adversarial_engine
 
 router = APIRouter(prefix="/adversarial", tags=["Adversarial"])
 

@@ -1,6 +1,6 @@
 import requests
 from fastapi import APIRouter, HTTPException, Form
-from app.config import settings
+from config import settings
 from typing import Dict
 
 router = APIRouter(prefix="/config", tags=["config"])

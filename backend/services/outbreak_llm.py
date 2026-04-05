@@ -5,7 +5,7 @@ to run symptom analysis with optional image support.
 
 import logging
 import requests
-from app.config import settings
+from config import settings
 
 logger = logging.getLogger(__name__)
 

@@ -2,8 +2,8 @@
 Trajectory Router - Health trajectory forecasting
 """
 from fastapi import APIRouter, HTTPException
-from app.schemas import PatientProfile, TrajectoryForecast
-from app.services.trajectory_service import trajectory_service
+from schemas import PatientProfile, TrajectoryForecast
+from services.trajectory_service import trajectory_service
 
 router = APIRouter(prefix="/trajectory", tags=["Trajectory"])
 

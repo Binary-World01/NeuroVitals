@@ -13,8 +13,8 @@ Migrated from hackathon_project1/routes.py.
 import math
 from fastapi import APIRouter, Form, File, UploadFile, Request
 
-from app.services.outbreak_llm import analyze_symptoms_with_gemini
-from app.services.outbreak_db import (
+from services.outbreak_llm import analyze_symptoms_with_gemini
+from services.outbreak_db import (
     save_to_database,
     upload_file,
     get_spreadable_diseases_for_map,
@@ -22,7 +22,7 @@ from app.services.outbreak_db import (
     get_nearby_outbreaks,
     save_admin_report,
 )
-from app.services.location_service import get_client_location
+from services.location_service import get_client_location
 
 router = APIRouter(prefix="/outbreak", tags=["outbreak"])
 

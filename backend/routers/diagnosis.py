@@ -3,8 +3,8 @@ Diagnosis Router - Standard symptom analysis
 """
 from fastapi import APIRouter, HTTPException
 from datetime import datetime
-from app.schemas import PatientProfile, DiagnosisResult
-from app.services.llm_service import llm_service
+from schemas import PatientProfile, DiagnosisResult
+from services.llm_service import llm_service
 
 router = APIRouter(prefix="/diagnosis", tags=["Diagnosis"])
 

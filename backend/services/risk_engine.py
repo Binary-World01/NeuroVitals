@@ -8,9 +8,9 @@ import json
 from datetime import datetime, timedelta
 from typing import Dict, Any, Optional
 from supabase import create_client, Client
-from app.config import settings
-from app.services.gemini_helper import call_gemini
-from app.services.prompt_builder import build_prompt
+from config import settings
+from services.gemini_helper import call_gemini
+from services.prompt_builder import build_prompt
 
 
 def _get_supabase() -> Optional[Client]:

@@ -6,8 +6,8 @@ from fastapi.responses import FileResponse
 import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.config import settings
-from app.routers import diagnosis, adversarial, trajectory, community, vitals, risk, outbreak, medication
+from config import settings
+from routers import diagnosis, adversarial, trajectory, community, vitals, risk, outbreak, medication, config as config_router
 
 # Create FastAPI app
 app = FastAPI(

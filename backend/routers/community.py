@@ -2,8 +2,8 @@
 Community Router - Community health intelligence
 """
 from fastapi import APIRouter, HTTPException
-from app.schemas import CommunityHealthData
-from app.services.community_service import community_service
+from schemas import CommunityHealthData
+from services.community_service import community_service
 
 router = APIRouter(prefix="/community", tags=["Community"])
 
