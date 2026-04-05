@@ -66,7 +66,9 @@ async function analyzeSymptoms(data) {
     try {
         console.log("🚀 [API] Routing symptom analysis through backend...");
         
-        // Transform frontend data to match backend PatientProfile schema
+        // Get current user context
+        const user = JSON.parse(localStorage.getItem('neurovitals_currentUser') || '{}');
+
         const backendData = {
             age: parseInt(data.age),
             gender: data.gender,
@@ -78,7 +80,9 @@ async function analyzeSymptoms(data) {
                 }
             ],
             medical_history: data.history ? [data.history] : [],
-            current_medications: []
+            current_medications: [],
+            name: user.name || data.name || "Anonymous",
+            email: user.email || localStorage.getItem('gfit_email')
         };
 
         const response = await fetch("/api/diagnosis/analyze", {
@@ -128,8 +132,9 @@ async function analyzeSymptoms(data) {
  */
 async function generateAdversarialDebate(data) {
     try {
-        console.log("🚀 [API] Routing adversarial debate through backend...");
-        
+        // Get current user context
+        const user = JSON.parse(localStorage.getItem('neurovitals_currentUser') || '{}');
+
         const backendData = {
             age: parseInt(data.age),
             gender: data.gender,
@@ -141,7 +146,9 @@ async function generateAdversarialDebate(data) {
                 }
             ],
             medical_history: data.history ? [data.history] : [],
-            current_medications: []
+            current_medications: [],
+            name: user.name || data.name || "Anonymous",
+            email: user.email || localStorage.getItem('gfit_email')
         };
 
         const response = await fetch("/api/adversarial/debate", {

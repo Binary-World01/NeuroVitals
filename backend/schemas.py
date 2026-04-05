@@ -17,7 +17,7 @@ class SymptomInput(BaseModel):
 
 class PatientProfile(BaseModel):
     """Complete patient profile"""
-    patient_id: str
+    patient_id: Optional[str] = None
     age: int
     gender: str
     symptoms: Union[List[SymptomInput], str]

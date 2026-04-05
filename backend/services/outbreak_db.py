@@ -74,10 +74,22 @@ def save_to_database(
     try:
         disease_info = DiseaseClassifier.classify_disease(ai_response)
         form_id = data.get("form_id")
+        user_email = data.get("email")
 
         symptoms_data = data.get("symptoms", "")
         if isinstance(symptoms_data, list):
             symptoms_data = ", ".join([str(s) for s in symptoms_data])
+
+        # 1. OPTIONAL: Lookup user_id from profiles table (if it exists)
+        # Your image shows a 'profiles' table, linking to it will ensure records appear in history.
+        user_id = None
+        if user_email:
+            try:
+                profile_res = _get_sb().table("profiles").select("id").eq("email", user_email).execute()
+                if profile_res.data:
+                    user_id = profile_res.data[0]["id"]
+            except Exception as e:
+                logger.debug("Profile lookup skipped/failed: %s", e)
 
         patient_record = {
             "name": data.get("name") or "Anonymous",
@@ -91,6 +103,13 @@ def save_to_database(
             "created_at": datetime.now().isoformat(),
         }
 
+        # Match the standard columns (adding user_id and email if table supports it)
+        if user_id:
+            patient_record["user_id"] = user_id
+        if user_email:
+            patient_record["email"] = user_email
+
+        # 2. SAVE TO RECORDS TABLE
         # Use upsert if form_id is provided, otherwise insert
         if form_id:
             patient_record["form_id"] = form_id
@@ -98,13 +117,16 @@ def save_to_database(
         else:
             result = _get_sb().table("records").insert(patient_record).execute()
 
+        # Check for Supabase Errors (Crucial for Debugging)
+        if hasattr(result, 'error') and result.error:
+            logger.error("❌ [Supabase] Insert Error (Records): %s", result.error.message)
+            return None
+
         if result.data:
             patient_id = result.data[0]["id"]
-            user_email = data.get("email")
 
             if location_data and location_data.get("latitude"):
-                # Deterministic ID for admin table to ensure one row per person (deduplication)
-                # If email is not provided, we fallback to patient_id (creating new rows)
+                # Deterministic ID for admin table
                 admin_id = str(uuid.uuid5(uuid.NAMESPACE_DNS, user_email)) if user_email else None
                 
                 admin_record = {
@@ -113,8 +135,8 @@ def save_to_database(
                     "location_city": location_data.get("city"),
                     "location_region": location_data.get("region"),
                     "location_country": location_data.get("country"),
-                    "location": location_data.get("location"), # Full formatted address
-                    "symptoms": f"AI Analysis: {data['symptoms']}", # Including original symptoms
+                    "location": location_data.get("location"),
+                    "symptoms": f"AI Analysis: {symptoms_data}",
                     "disease_category": disease_info["category"],
                     "spreadable": disease_info["spreadable"],
                     "created_at": datetime.now().isoformat(),
@@ -122,18 +144,16 @@ def save_to_database(
                 
                 if admin_id:
                     admin_record["id"] = admin_id
-                    # Upsert on ID (which is derived from email) to ensure singleton entries per user
                     _get_sb().table("admin").upsert(admin_record, on_conflict="id").execute()
                 else:
-                    # Fallback to patient_id if email not provided (less robust)
-                    admin_record["id"] = patient_id
+                    admin_record["patient_id"] = patient_id # Link by UUID
                     _get_sb().table("admin").insert(admin_record).execute()
 
-            logger.info("Saved/Updated patient %s (disease: %s)", patient_id, disease_info["disease_type"])
+            logger.info("✅ Saved/Updated patient %s (disease: %s)", patient_id, disease_info["disease_type"])
             return patient_id
 
     except Exception as exc:
-        logger.error("Database save error: %s", exc)
+        logger.error("❌ Backend database save error: %s", exc)
     return None
 
 
