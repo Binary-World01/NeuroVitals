@@ -515,17 +515,15 @@
 
             const onboardingData = {
                 user_email: currentUser.email,
-                full_name: document.getElementById('name').value,
                 age: parseInt(document.getElementById('age').value) || 0,
                 gender: document.getElementById('gender').value,
-                phone: document.getElementById('phone').value,
-                blood_type: document.getElementById('bloodType').value,
+                phonenumber: document.getElementById('phone').value,
+                bloodtype: document.getElementById('bloodType').value,
                 chronic_conditions: document.getElementById('conditions').value,
-                current_medications: document.getElementById('medications').value,
+                medications: document.getElementById('medications').value,
                 supplements: document.getElementById('supplements').value,
                 drug_allergies: document.getElementById('drugAllergies').value,
                 food_allergies: document.getElementById('foodAllergies').value,
-                emergency_contacts: emergencyContacts,
                 updated_at: new Date().toISOString()
             };
 

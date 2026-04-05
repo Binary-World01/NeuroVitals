@@ -593,13 +593,7 @@
                 .single();
 
             // 2. Fetch medical form data from 'medical_forms' table
-            const { data: medicalRecord } = await window.supabaseClient
-                .from('medical_forms')
-                .select('*')
-                .eq('user_email', email)
-                .single();
-
-            const name = profile?.name || medicalRecord?.full_name || activeUser.full_name || email.split('@')[0];
+            const name = profile?.name || activeUser.full_name || email.split('@')[0];
             const greeting = getGreeting() + ', ' + name;
 
             document.getElementById('headerGreeting').innerText = greeting;
@@ -1147,9 +1141,9 @@
                     updateMedDisplay(activeMed.name, activeMed.dosage, activeMed.time_of_day?.[0]);
                 } else {
                     // Fallback to medical_forms if no active med found in dedicated table
-                    const { data } = await window.supabaseClient.from('medical_forms').select('current_medications').eq('user_email', email).single();
-                    if (data?.current_medications) {
-                        updateMedDisplay(data.current_medications, "As prescribed", "Daily");
+                    const { data } = await window.supabaseClient.from('medical_forms').select('medications').eq('user_email', email).single();
+                    if (data?.medications) {
+                        updateMedDisplay(data.medications, "As prescribed", "Daily");
                     }
                 }
             } catch (err) { console.warn("Medication fetch failed", err); }
@@ -1167,23 +1161,8 @@
         }
 
         async function loadEmergencyContacts(email) {
-            try {
-                const { data, error } = await window.supabaseClient
-                    .from('medical_forms')
-                    .select('emergency_contacts')
-                    .eq('user_email', email)
-                    .single();
-
-                if (data && data.emergency_contacts) {
-                    const contacts = Array.isArray(data.emergency_contacts) ? data.emergency_contacts : JSON.parse(data.emergency_contacts || "[]");
-                    if (contacts.length > 0) {
-                        const primary = contacts[0];
-                        // Update UI placeholders if they exist
-                        // For example, if there's a text saying "alerting Sister"
-                        document.body.innerHTML = document.body.innerHTML.replace('Sister', primary.relationship || 'Emergency Contact');
-                    }
-                }
-            } catch (e) { console.warn("Emergency contact load failed", e); }
+            // Placeholder: Not currently stored in medical_forms table
+            console.log("Emergency contacts lookup skipped - adjust schema if needed.");
         }
 
         // Action Buttons (Placeholders)
