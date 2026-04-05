@@ -587,7 +587,7 @@
 
             // Fetch profile by email
             const { data: profile } = await window.supabaseClient
-                .from('profiles')
+                .from('users')
                 .select('*')
                 .eq('email', email)
                 .single();

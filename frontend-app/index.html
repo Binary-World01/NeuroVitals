@@ -1215,7 +1215,7 @@
             console.log("Attempting custom table login...");
             try {
                 const { data, error } = await window.supabaseClient
-                    .from('profiles')
+                    .from('users')
                     .select('*')
                     .eq('email', email)
                     .eq('password', password)
@@ -1231,7 +1231,7 @@
             console.log("Upserting user profile...");
             try {
                 const { data, error } = await window.supabaseClient
-                    .from('profiles')
+                    .from('users')
                     .upsert(profileData);
                 return { data, error };
             } catch (err) {
@@ -1306,7 +1306,7 @@
 
                 // Fetch profile to merge
                 const { data: userProfile } = await window.supabaseClient
-                    .from('profiles')
+                    .from('users')
                     .select('*')
                     .eq('email', data.user.email)
                     .single();
