@@ -35,7 +35,7 @@ app.include_router(vitals.router, prefix="/api")
 app.include_router(risk.router, prefix="/api")
 app.include_router(outbreak.router, prefix="/api")
 app.include_router(medication.router, prefix="/api")
-app.include_router(config_router, prefix="/api")
+app.include_router(config_router.router, prefix="/api")
 
 
 @app.get("/api/info")
@@ -116,7 +116,7 @@ async def serve_frontend(catchall: str):
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(
-        "app.main:app", 
+        "main:app", 
         host="0.0.0.0", 
         port=8000, 
         reload=True
