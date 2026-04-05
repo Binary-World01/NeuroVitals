@@ -6,36 +6,41 @@ import json
 from typing import Dict, Any
 from app.schemas import PatientProfile
 
-from app.config import settings
 
 class LLMService:
     """Service for LLM interactions"""
     
     def __init__(self):
+        from app.config import settings
         self.provider = settings.MODEL_PROVIDER
-        self.api_key = None
-        self.client = None
+        self.api_key = settings.OPENAI_API_KEY
+        self.github_token = settings.GITHUB_TOKEN
+        self.github_url = settings.GITHUB_API_URL
         self.use_mock = False
-
-        if self.provider == "openai":
-            self.api_key = settings.OPENAI_API_KEY
-            if self.api_key:
-                from openai import OpenAI
-                self.client = OpenAI(api_key=self.api_key)
-            else:
-                self.use_mock = True
-        elif self.provider == "github":
-            self.api_key = settings.GITHUB_TOKEN
-            if self.api_key:
-                from openai import OpenAI
-                self.client = OpenAI(
-                    base_url="https://models.inference.ai.azure.com",
-                    api_key=self.api_key
-                )
-            else:
-                self.use_mock = True
-        else:
+        
+        if self.provider == "openai" and not self.api_key:
             self.use_mock = True
+        elif self.provider == "github" and not self.github_token:
+            self.use_mock = True
+        elif self.provider == "mock":
+            self.use_mock = True
+            
+        if not self.use_mock:
+            try:
+                from openai import OpenAI
+                if self.provider == "openai":
+                    self.client = OpenAI(api_key=self.api_key)
+                elif self.provider == "github":
+                    # GitHub Models usually expects /v1 in the base_url for OpenAI client compatibility
+                    base_url = self.github_url if "/v1" in self.github_url else f"{self.github_url}/v1"
+                    self.client = OpenAI(
+                        base_url=base_url,
+                        api_key=self.github_token,
+                    )
+            except ImportError:
+                print("OpenAI client not installed, using mock mode")
+                self.use_mock = True
+
     
     def analyze_symptoms(self, patient: PatientProfile) -> Dict[str, Any]:
         """Analyze symptoms and provide diagnosis"""
@@ -70,11 +75,12 @@ Respond in JSON format:
 }}
 """
         
-        model = "gpt-4" if self.provider == "openai" else "gpt-4o"
-        
         try:
+            model_name = "google/gemini-1.5-flash" if self.provider == "github" else "gpt-4"
             response = self.client.chat.completions.create(
-                model=model,
+                model=model_name,
+
+
                 messages=[
                     {"role": "system", "content": "You are a medical diagnosis AI. Always provide reasoning."},
                     {"role": "user", "content": prompt}

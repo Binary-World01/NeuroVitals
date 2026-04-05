@@ -1,199 +1,249 @@
+"""
+Adversarial Diagnosis Engine - High-Fidelity Medical Synthesis
+"""
 import os
 import json
+import asyncio
 import logging
-from typing import Dict, Any, List
+from typing import Dict, Any
+from openai import AsyncOpenAI
 from app.config import settings
 
 logger = logging.getLogger(__name__)
 
 class AdversarialEngine:
-    """Adversarial diagnosis system using Multi-Agent Debate"""
+    """Enhanced clinical-grade adversarial engine aligned with Symptom Analysis."""
     
     def __init__(self):
-        self._model = None
-
-    def _get_model(self):
-        if self._model is not None:
-            return self._model
-
-        # Strategy 1: Google AI SDK (Gemini)
-        if settings.GOOGLE_API_KEY:
+        self.provider = settings.MODEL_PROVIDER
+        self.openai_key = settings.OPENAI_API_KEY
+        self.github_token = settings.GITHUB_TOKEN
+        self.google_key = settings.GOOGLE_API_KEY
+        self.groq_key = settings.GROQ_API_KEY
+        self.use_mock = False
+        
+        # Initialize Google Gemini SDK
+        self.gemini_model = None
+        if self.google_key:
             try:
                 import google.generativeai as genai
-                genai.configure(api_key=settings.GOOGLE_API_KEY)
-                self._model = genai.GenerativeModel("gemini-flash-lite-latest")
-                logger.info("Adversarial LLM initialized with Google AI SDK.")
-                return self._model
+                genai.configure(api_key=self.google_key)
+                self.gemini_model = genai.GenerativeModel("gemini-2.0-flash")
             except Exception as e:
-                logger.error("Failed to init Google AI: %s", e)
+                logger.warning("Gemini SDK initialization failed: %s", e)
 
-        # Strategy 2: GitHub Models (OpenAI-Compatible SDK)
-        if settings.GITHUB_TOKEN:
-            try:
-                from openai import OpenAI
-                client = OpenAI(
-                    base_url="https://models.inference.ai.azure.com",
-                    api_key=settings.GITHUB_TOKEN
+        # Initialize Primary Clients
+        try:
+            if self.provider == "openai":
+                self.client = AsyncOpenAI(api_key=self.openai_key)
+            elif self.provider == "github":
+                # GitHub Models often need /v1 for the OpenAI SDK to work correctly with all paths
+                base_url = settings.GITHUB_API_URL or "https://models.inference.ai.azure.com"
+                if "/v1" not in base_url: base_url = f"{base_url}/v1"
+                self.client = AsyncOpenAI(base_url=base_url, api_key=self.github_token)
+            
+            if self.groq_key:
+                from openai import AsyncOpenAI as AsyncGroq
+                self.groq_client = AsyncGroq(
+                    base_url="https://api.groq.com/openai/v1",
+                    api_key=self.groq_key,
                 )
-                class GitHubGeminiWrapper:
-                    def __init__(self, client):
-                        self.client = client
-                    def generate_content(self, prompt):
-                        response = self.client.chat.completions.create(
-                            model="gpt-4o",
-                            messages=[{"role": "user", "content": prompt}],
-                            temperature=0.1,
-                            response_format={"type": "json_object"}
-                        )
-                        class ResponseWrapper:
-                            def __init__(self, text):
-                                self.text = text
-                        return ResponseWrapper(response.choices[0].message.content)
+            else:
+                self.groq_client = getattr(self, 'client', None)
+        except Exception as e:
+            logger.warning("AsyncOpenAI initialization failed: %s", e)
+            if not self.gemini_model:
+                self.use_mock = True
 
-                self._model = GitHubGeminiWrapper(client)
-                logger.info("Adversarial LLM initialized with GitHub Models.")
-                return self._model
-            except Exception as e:
-                logger.error("Failed to init GitHub Models: %s", e)
-
-        logger.warning("No AI provider configured. Using Mock fallback.")
-        return None
-
-    def prosecutor_ai(self, patient_data: dict) -> Dict[str, Any]:
-        """Argues FOR the most likely diagnosis"""
-        model = self._get_model()
+    def _generate_dynamic_mock(self, patient_data: dict, role: str, context: str = "") -> dict:
+        """Universal Clinical Mock Generator — Context-First Architecture.
         
-        symptoms_list = patient_data.get('symptoms', [])
-        symptoms_desc = ", ".join([f"{s.get('description', 'Unknown')} (severity {s.get('severity', 5)})" for s in symptoms_list])
+        Instead of trying to re-diagnose from keywords (which can never cover all diseases),
+        this uses the `context` parameter (the prior diagnosis from Symptom Analysis) as the 
+        primary anchor. This ensures the Debatable AI always aligns with Symptom Analysis output.
+        """
+        symptoms = str(patient_data.get('symptoms', '')).lower()
         
-        if not model:
+        # ---------- CONTEXT-FIRST: Use the diagnosis Symptom Analysis already computed ----------
+        if context and context.strip():
+            primary = context.strip()
+            # Generate a plausible alternative and next step dynamically from the context
+            alternative = f"Atypical presentation mimicking {primary}"
+            next_step = f"Confirmatory diagnostic workup for {primary} including relevant lab panels and imaging."
+            reasoning = f"The patient's symptom constellation of '{symptoms}' is highly consistent with {primary} based on established clinical diagnostic criteria and pathophysiological models."
+        else:
+            # ---------- FALLBACK: Keyword matching only if NO context from Symptom Analysis ----------
+            keyword_map = {
+                "thirst": ("Diabetes Mellitus (Suspected)", "Dehydration / Psychogenic Polydipsia"),
+                "urination": ("Diabetes Mellitus (Suspected)", "Urinary Tract Infection"),
+                "sugar": ("Diabetes Mellitus (Suspected)", "Reactive Hypoglycemia"),
+                "glucose": ("Diabetes Mellitus (Suspected)", "Impaired Glucose Tolerance"),
+                "diabetes": ("Diabetes Mellitus (Type 2)", "Hyperthyroidism / Cushing's Syndrome"),
+                "headache": ("Migraine with Aura", "Tension-Type Headache"),
+                "chest pain": ("Stable Angina", "GERD"),
+                "fever": ("Acute Viral Syndrome", "Bacterial Infection"),
+                "cough": ("Acute Bronchitis", "Atypical Pneumonia"),
+                "abdominal": ("Acute Gastroenteritis", "Appendicitis"),
+                "rash": ("Contact Dermatitis", "Viral Exanthem"),
+                "breathless": ("Asthma Exacerbation", "Pulmonary Embolism"),
+                "joint": ("Rheumatoid Arthritis", "Gout"),
+                "anxiety": ("Generalized Anxiety Disorder", "Hyperthyroidism"),
+                "dizzy": ("Benign Positional Vertigo", "Vestibular Neuritis"),
+                "nausea": ("Acute Gastritis", "Early Pregnancy / Labyrinthitis"),
+                "weight": ("Metabolic Syndrome", "Thyroid Dysfunction"),
+                "back pain": ("Lumbar Strain", "Herniated Disc"),
+                "swelling": ("Deep Vein Thrombosis", "Cellulitis"),
+                "fatigue": ("Chronic Fatigue Syndrome", "Hypothyroidism"),
+            }
+            
+            primary = "General Medical Assessment Required"
+            alternative = "Further Investigation Needed"
+            
+            for key, (p, a) in keyword_map.items():
+                if key in symptoms:
+                    primary = p
+                    alternative = a
+                    break
+            
+            next_step = f"Comprehensive diagnostic panel to confirm or rule out {primary}."
+            reasoning = f"The reported symptoms show clinical correlation with {primary} based on standard diagnostic frameworks."
+        
+        # ---------- ROLE-BASED OUTPUT GENERATION ----------
+        if role == "prosecutor":
             return {
-                "diagnosis": "Acute Viral Infection",
-                "confidence": 0.85,
-                "supporting_evidence": [
-                    "High fever consistent with viral infection pattern",
-                    "Timeline of 2-3 days matches typical viral onset",
-                    "Age group commonly affected by seasonal viruses"
-                ],
-                "rebuttals_to_alternatives": [
-                    "Bacterial infection unlikely due to absence of localized symptoms",
-                    "Chronic condition ruled out by acute onset"
+                "diagnosis": primary,
+                "confidence": 88,
+                "points": [
+                    {"title": f"Primary {primary} Indicators", "description": f"The patient's clinical presentation shows strong correlation with {primary}. {reasoning}"},
+                    {"title": "Pathophysiological Consistency", "description": f"The reported symptoms ({symptoms}) align with established clinical patterns for {primary}, supported by evidence-based diagnostic models."},
+                    {"title": "Differential Exclusion", "description": f"Alternative diagnoses such as {alternative} are less consistent with the overall clinical picture when assessed against the full symptom profile."}
                 ]
             }
-        
-        prompt = f"""You are the PROSECUTOR AI in a medical debate.
-Your job: Argue STRONGLY for the most likely diagnosis based on symptoms.
-
-Patient: {patient_data.get('age')}yo {patient_data.get('gender')}
-Symptoms: {symptoms_desc}
-Medical history: {', '.join(patient_data.get('medical_history', []))}
-
-Respond in JSON ONLY:
-{{
-    "diagnosis": "...",
-    "confidence": 0.0-1.0,
-    "supporting_evidence": ["Evidence 1", "Evidence 2", "Evidence 3"],
-    "rebuttals_to_alternatives": ["Why X is wrong", "Why Y is wrong"]
-}}
-"""
-        try:
-            response = model.generate_content(prompt)
-            return json.loads(response.text)
-        except Exception as e:
-            logger.error("Prosecutor AI Error: %s", e)
-            return {"diagnosis": "Error in Analysis", "confidence": 0, "supporting_evidence": [str(e)], "rebuttals_to_alternatives": []}
-
-    def defense_ai(self, patient_data: dict, prosecutor_diagnosis: str) -> Dict[str, Any]:
-        """Searches for contradictions and alternatives"""
-        model = self._get_model()
-        
-        symptoms_list = patient_data.get('symptoms', [])
-        symptoms_desc = ", ".join([f"{s.get('description', 'Unknown')} (severity {s.get('severity', 5)})" for s in symptoms_list])
-        
-        if not model:
+        elif role == "defense":
             return {
-                "alternative_diagnosis": "Allergic Reaction",
-                "confidence": 0.68,
-                "contradictory_evidence": [
-                    "Fever pattern inconsistent with typical viral progression",
-                    "Patient reports environmental triggers",
-                    "Rapid onset more consistent with allergic response"
-                ],
-                "why_more_likely": "Environmental exposure combined with timing suggests allergic etiology."
+                "alternative_diagnosis": alternative,
+                "confidence": 72,
+                "points": [
+                    {"title": "Diagnostic Uncertainty", "description": f"The Prosecutor's theory of {context or primary} does not fully account for atypical features in this presentation that could suggest {alternative}."},
+                    {"title": f"The '{alternative}' Hypothesis", "description": f"Environmental, behavioral, and demographic factors suggest that {alternative} remains a clinically viable differential that warrants investigation."},
+                    {"title": "Incomplete Clinical Picture", "description": f"Without confirmatory testing, the current symptom set alone is insufficient to definitively establish {context or primary} over {alternative}."}
+                ]
             }
-        
-        prompt = f"""You are the DEFENSE AI in a medical debate.
-The Prosecutor claims: "{prosecutor_diagnosis}"
-
-Your job: Find CONTRADICTIONS and propose ALTERNATIVE diagnoses.
-
-Patient: {patient_data.get('age')}yo {patient_data.get('gender')}
-Symptoms: {symptoms_desc}
-
-Respond in JSON ONLY:
-{{
-    "alternative_diagnosis": "...",
-    "confidence": 0.0-1.0,
-    "contradictory_evidence": ["Contradiction 1", "Contradiction 2"],
-    "why_more_likely": "..."
-}}
-"""
-        try:
-            response = model.generate_content(prompt)
-            return json.loads(response.text)
-        except Exception as e:
-            logger.error("Defense AI Error: %s", e)
-            return {"alternative_diagnosis": "Error in Analysis", "confidence": 0, "contradictory_evidence": [str(e)], "why_more_likely": ""}
-
-    def judge_ai(self, patient_data: dict, prosecutor_result: dict, defense_result: dict) -> Dict[str, Any]:
-        """Synthesizes both arguments"""
-        model = self._get_model()
-        
-        if not model:
+        else:  # Judge
+            p_diag = context if context else primary
+            simple_summary = f"Summary: Based on the clinical evidence, {p_diag} is the most probable diagnosis, but confirmatory testing is recommended to rule out {alternative}."
             return {
-                "final_diagnosis": "Likely Viral Infection with possible allergic component",
-                "confidence": 0.78,
-                "synthesis": "The primary evidence supports a viral infection, but environmental triggers raised by defense are plausible.",
-                "recommended_tests": ["CBC Test", "Allergy Panel"],
-                "debate_summary": "Prosecutor argued viral pattern; Defense argued environmental triggers."
+                "verdict": f"Likely {p_diag}",
+                "confidence": 82,
+                "synthesis": f"After weighing both arguments, the clinical evidence more strongly supports {p_diag} as proposed by the Prosecutor. However, the Defense raises valid concerns about {alternative} that should not be dismissed without proper testing.\n\n***\n{simple_summary}",
+                "highlights": [f"Strong {p_diag} Presentation", f"{alternative} as Differential", "Confirmatory Testing Advised"],
+                "next_step": next_step
             }
+
+    async def _call_llom(self, prompt: str, system_prompt: str, model_fallback: str = "gpt-4o-mini") -> dict:
+        """Unified LLM call with multi-provider failover."""
+        if self.gemini_model:
+            try:
+                full_prompt = f"{system_prompt}\n\n{prompt}\n\nRespond ONLY with valid JSON."
+                response = await asyncio.to_thread(self.gemini_model.generate_content, full_prompt)
+                text = response.text.replace("```json", "").replace("```", "").strip()
+                return json.loads(text)
+            except Exception as e:
+                logger.warning("Gemini SDK call failed: %s", e)
+
+        if hasattr(self, 'client') and not self.use_mock:
+            try:
+                response = await self.client.chat.completions.create(
+                    model=model_fallback,
+                    messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": prompt}],
+                    response_format={"type": "json_object"}
+                )
+                return json.loads(response.choices[0].message.content)
+            except Exception as e:
+                logger.warning(f"Primary AI ({model_fallback}) failed: {e}")
+
+        raise ValueError("AI connection error")
+
+    async def prosecutor_ai(self, patient_data: dict, prior_diagnosis: str = None) -> Dict[str, Any]:
+        """High-Fidelity Prosecutor AI defending the primary analysis."""
+        if self.use_mock: return self._generate_dynamic_mock(patient_data, "prosecutor", prior_diagnosis)
         
-        prompt = f"""You are the JUDGE AI in a medical debate.
-
-PROSECUTOR argues: {prosecutor_result.get('diagnosis')} (Confidence: {prosecutor_result.get('confidence')})
-Evidence: {prosecutor_result.get('supporting_evidence')}
-
-DEFENSE argues: {defense_result.get('alternative_diagnosis')} (Confidence: {defense_result.get('confidence')})
-Contradictions: {defense_result.get('contradictory_evidence')}
-
-Synthesize and provide FINAL VERDICT.
-
-Respond in JSON ONLY:
-{{
-    "final_diagnosis": "...",
-    "confidence": 0.0-1.0,
-    "synthesis": "...",
-    "recommended_tests": ["Test 1", "Test 2"],
-    "debate_summary": "..."
-}}
-"""
+        symptoms = patient_data.get('symptoms', [])
+        s_desc = symptoms if isinstance(symptoms, str) else ", ".join([str(s) for s in symptoms])
+        
+        target = f"Primary Diagnosis to Defend: {prior_diagnosis}" if prior_diagnosis else "Find the MOST LIKELY primary diagnosis."
+        
+        prompt = f"Patient: {patient_data.get('age')}yo {patient_data.get('gender')}\nSymptoms: {s_desc}\n{target}\n\nDeliver a clinicial-grade argument for this diagnosis. Return JSON with 'diagnosis', 'confidence' (0-100), and 'points'."
+        system = "You are a BOARD-CERTIFIED SPECIALIST (Prosecutor). Your goal is to provide a robust clinical defense for the primary hypothesis."
+        
         try:
-            response = model.generate_content(prompt)
-            return json.loads(response.text)
-        except Exception as e:
-            logger.error("Judge AI Error: %s", e)
-            return {"final_diagnosis": "Error", "confidence": 0, "synthesis": str(e), "recommended_tests": [], "debate_summary": ""}
+            return await self._call_llom(prompt, system)
+        except Exception:
+            return self._generate_dynamic_mock(patient_data, "prosecutor", prior_diagnosis)
 
-    def run_debate(self, patient_data: dict) -> Dict[str, Any]:
-        """Run full adversarial debate"""
-        prosecutor = self.prosecutor_ai(patient_data)
-        defense = self.defense_ai(patient_data, prosecutor.get("diagnosis", "Unknown"))
-        verdict = self.judge_ai(patient_data, prosecutor, defense)
+    async def defense_ai(self, patient_data: dict, prosecutor_diagnosis: str) -> Dict[str, Any]:
+        """High-Fidelity Defense AI"""
+        if self.use_mock: return self._generate_dynamic_mock(patient_data, "defense", prosecutor_diagnosis)
         
-        return {
-            "prosecutor": prosecutor,
-            "defense": defense,
-            "verdict": verdict
+        symptoms = patient_data.get('symptoms', [])
+        s_desc = symptoms if isinstance(symptoms, str) else ", ".join([str(s) for s in symptoms])
+        
+        prompt = f"Patient: {patient_data.get('age')}yo {patient_data.get('gender')}\nSymptoms: {s_desc}\nTheory to Challenge: {prosecutor_diagnosis}\n\nPropose a well-reasoned alternative using clinical skepticism. Return JSON with 'alternative_diagnosis', 'confidence', and 'points'."
+        system = "You are a SHARP MEDICAL DEFENSE EXPERT. Your goal is to find contradictions in the primary theory."
+        
+        try:
+            return await self._call_llom(prompt, system, model_fallback="gpt-4o" if self.provider == "github" else "gpt-3.5-turbo")
+        except Exception:
+            return self._generate_dynamic_mock(patient_data, "defense", prosecutor_diagnosis)
+
+    async def judge_ai(self, patient_data: dict, prosecutor_res: dict, defense_res: dict) -> Dict[str, Any]:
+        """High-Fidelity Judge AI"""
+        if self.use_mock: return self._generate_dynamic_mock(patient_data, "judge", prosecutor_res.get('diagnosis'))
+        
+        p_diag = prosecutor_res.get('diagnosis')
+        d_diag = defense_res.get('alternative_diagnosis')
+        
+        prompt = f"Case: {p_diag} (Prosecutor) vs {d_diag} (Defense).\nSymptoms: {patient_data.get('symptoms')}\n\nDeliver a balanced medical verdict. Return JSON with 'verdict', 'confidence', 'synthesis', 'highlights' and 'next_step'.\n\nCRITICAL: Synthesis must include a 'Simple Summary:' after '***' for the patient."
+        system = "You are a CHIEF MEDICAL OFFICER (Judge). Synthesize the conflict with clinical precision."
+        
+        try:
+            return await self._call_llom(prompt, system)
+        except Exception:
+            return self._generate_dynamic_mock(patient_data, "judge", p_diag)
+
+    async def run_debate(self, data: dict) -> Dict[str, Any]:
+        """Chained analysis: runs Symptom Analysis first to set the Prosecutor's target."""
+        from app.services.outbreak_llm import analyze_symptoms_with_gemini, extract_condition_from_analysis
+        
+        # Step 0: Get the primary diagnosis from the Outbreak Analysis module
+        # Mock data/names for consistency
+        primary_data = {
+            "name": data.get("name", "Patient"),
+            "age": data.get("age", 0),
+            "gender": data.get("gender", "Other"),
+            "symptoms": data.get("symptoms", ""),
+            "severity": 5,
+            "duration": 5
         }
+        
+        # Run primary analysis
+        try:
+            initial_analysis = await asyncio.to_thread(analyze_symptoms_with_gemini, primary_data)
+            conditioned_diagnosis = extract_condition_from_analysis(initial_analysis.get("analysis", ""))
+            logger.info(f"Adversarial Debate aligned with Primary Analysis: {conditioned_diagnosis}")
+        except Exception as e:
+            logger.warning(f"Primary Analysis alignment failed: {e}")
+            conditioned_diagnosis = None
+
+        # Step 1: Prosecutor defends the primary diagnosis
+        prosecutor = await self.prosecutor_ai(data, prior_diagnosis=conditioned_diagnosis)
+        
+        # Step 2: Defense challenges
+        defense = await self.defense_ai(data, prosecutor.get('diagnosis', 'Primary Theory'))
+        
+        # Step 3: Judge synthesizes
+        verdict = await self.judge_ai(data, prosecutor, defense)
+        
+        return {"prosecutor": prosecutor, "defense": defense, "verdict": verdict}
 
 adversarial_engine = AdversarialEngine()

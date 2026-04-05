@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html class="dark" lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>Neuro-Vitals | Neural Bio-Sensor</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@300;400;500;600;700;800;900&family=Outfit:wght@500;600;700;800&family=Fira+Code:wght@400;500&display=swap"
+        rel="stylesheet" />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200"
+        rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/supabase-config.js"></script>
+    <script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#ec5b13", // Original Orange
+                        "accent-blue": "#00d2ff", // Original Blue
+                        "background-dark": "#0a0604", // Original Dark BG
+                        "neuro-base": "#1e293b",
+                        "neuro-green": "#10b981",
+                        "neuro-orange": "#f97316",
+                        "neuro-red": "#ef4444",
+                    },
+                    fontFamily: {
+                        "sans": ["Public Sans", "sans-serif"],
+                        "display": ["Poppins", "sans-serif"]
+                    },
+                    boxShadow: {
+                        "glow": "0 0 20px rgba(236, 91, 19, 0.4)", // Orange Glow
+                        "emergency": "0 0 30px rgba(239, 68, 68, 0.4)"
+                    }
+                }
+            }
+        };
+    </script>
+    <style>
+        body {
+            font-family: 'Public Sans', sans-serif;
+            background-color: #0a0604;
+            background-image: radial-gradient(circle at top right, #2d1b15, #0a0604, #0a0604);
+            color: #f8fafc;
+            overflow-x: hidden;
+        }
+
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            transition: all 0.3s ease;
+        }
+
+        .glass-panel:hover {
+            border-color: rgba(236, 91, 19, 0.3);
+            background: rgba(255, 255, 255, 0.05);
+            transform: translateY(-2px);
+        }
+
+        /* ── Google Fit Live Panel ── */
+        @keyframes gfit-slide-in {
+            from { opacity: 0; transform: translateY(16px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .gfit-stat-card {
+            background: rgba(255, 255, 255, 0.02);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            transition: all 0.3s ease;
+        }
+
+        .gfit-stat-card:hover {
+            border-color: rgba(236, 91, 19, 0.3);
+            transform: translateY(-2px);
+        }
+
+        .animate-scan-line {
+            animation: scan 3s linear infinite;
+        }
+
+        @keyframes scan {
+            0% { top: 0%; opacity: 0; }
+            5% { opacity: 1; }
+            95% { opacity: 1; }
+            100% { top: 100%; opacity: 0; }
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 5px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #333; border-radius: 10px; }
+    </style>
+</head>
+
+<body class="flex min-h-screen overflow-hidden">
+
+    <!-- Sidebar (Standardized) -->
+    <aside id="sidebar"
+        class="fixed inset-y-0 left-0 transform -translate-x-full md:relative md:translate-x-0 w-64 md:w-24 lg:w-64 bg-background-dark/95 border-r border-white/5 z-40 transition-transform duration-300 flex flex-col pt-16 md:pt-0">
+        <div class="p-6 flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center text-primary shadow-glow">
+                <span class="material-symbols-rounded">neurology</span>
+            </div>
+            <span class="font-bold text-xl md:hidden lg:block tracking-tight">Neuro-Vitals</span>
+        </div>
+
+        <nav class="flex-1 px-3 space-y-1">
+            <a href="dashboard.html"
+                class="flex items-center gap-3 px-3 py-3 rounded-xl text-slate-400 hover:bg-white/5 hover:text-white transition-colors" title="Main Dashboard Overview">
+                <span class="material-symbols-rounded">grid_view</span>
+                <span class="md:hidden lg:block text-sm font-medium">Dashboard</span>
+            </a>
+            <a href="symptom-analysis.html"
+                class="flex items-center gap-3 px-3 py-3 rounded-xl text-slate-400 hover:bg-white/5 hover:text-white transition-colors" title="Symptoms Analysis: Analyze Symptoms">
+                <span class="material-symbols-rounded">health_metrics</span>
+                <span class="md:hidden lg:block text-sm font-medium">Symptoms Analysis</span>
+            </a>
+            <a href="adversarial-diagnosis.html"
+                class="flex items-center gap-3 px-3 py-3 rounded-xl text-slate-400 hover:bg-white/5 hover:text-white transition-colors" title="Debatable AI: Challenge Diagnosis">
+                <span class="material-symbols-rounded">swords</span>
+                <span class="md:hidden lg:block text-sm font-medium">Debatable AI</span>
+            </a>
+            <a href="integrations.html"
+                class="flex items-center gap-3 px-3 py-3 rounded-xl bg-primary/10 text-primary border border-primary/20 font-bold transition-all shadow-[0_0_15px_rgba(236,91,19,0.1)]" title="Neural Bio-Sensor: Connect Wearables">
+                <span class="material-symbols-rounded">vital_signs</span>
+                <span class="md:hidden lg:block text-sm">Neural Bio-Sensor</span>
+            </a>
+            <a href="outbreak-map.html"
+                class="flex items-center gap-3 px-3 py-3 rounded-xl text-slate-400 hover:bg-white/5 hover:text-white transition-colors" title="Community Health: Outbreak Map">
+                <span class="material-symbols-rounded">groups</span>
+                <span class="md:hidden lg:block text-sm font-medium">Community</span>
+            </a>
+            <a href="risk-engine.html"
+                class="flex items-center gap-3 px-3 py-3 rounded-xl text-slate-400 hover:bg-white/5 hover:text-white transition-colors" title="Neuro-Forecast: AI Risk Prediction">
+                <span class="material-symbols-rounded">psychology</span>
+                <span class="md:hidden lg:block text-sm font-medium">Neuro-Forecast</span>
+            </a>
+        </nav>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="flex-1 overflow-y-auto relative h-screen">
+        <!-- Floating Header -->
+        <header
+            class="sticky top-0 z-40 bg-background-dark/80 backdrop-blur-md border-b border-white/5 px-8 py-4 flex items-center justify-between">
+            <div>
+                <h1 class="font-display font-bold text-2xl text-white">Integrations Hub</h1>
+                <p class="text-sm text-slate-400">Manage neural sensors & wearable data streams</p>
+            </div>
+
+            <div class="flex items-center gap-4">
+                <div class="bg-white/5 rounded-full px-4 py-1.5 border border-white/10 flex items-center gap-2">
+                    <div id="systemStatusDot" class="w-2 h-2 rounded-full bg-slate-500"></div>
+                    <span id="systemStatusText" class="text-xs font-mono text-slate-400 uppercase tracking-widest">Idle</span>
+                </div>
+                <button class="w-10 h-10 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center transition-colors">
+                    <span class="material-symbols-rounded text-slate-400">settings</span>
+                </button>
+            </div>
+        </header>
+
+        <div class="p-8 max-w-7xl mx-auto space-y-8 relative z-10">
+
+            <!-- Hero Status Section -->
+            <section class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <!-- Connectivity Status -->
+                <div class="glass-panel rounded-3xl p-6 md:col-span-2 relative overflow-hidden">
+                    <div id="scanLine" class="absolute inset-0 bg-gradient-to-r from-transparent via-primary/5 to-transparent -skew-x-12 translate-x-[-100%] opacity-0"></div>
+
+                    <div class="flex justify-between items-start mb-6">
+                        <div>
+                            <h3 class="text-lg font-display font-bold text-white">Data Stream Status</h3>
+                            <p class="text-sm text-slate-400">Real-time ingestion latency & throughput</p>
+                        </div>
+                        <div id="connectionBadge"
+                            class="flex items-center gap-2 px-3 py-1 rounded-full bg-slate-500/10 border border-slate-500/20 transition-all duration-300">
+                            <span class="material-symbols-rounded text-slate-500 text-sm">wifi_off</span>
+                            <span class="text-xs font-bold text-slate-500 uppercase tracking-widest">Disconnected</span>
+                        </div>
+                    </div>
+
+                    <div class="flex items-end gap-1.5 h-32 w-full" id="equalizer">
+                        <!-- Bars generated by JS -->
+                    </div>
+                </div>
+
+                <!-- Quick Stats -->
+                <div class="space-y-6">
+                    <div class="glass-panel p-5 rounded-2xl flex items-center justify-between border-white/5">
+                        <div>
+                            <p class="text-[10px] text-slate-500 uppercase font-bold tracking-widest mb-1">Active Bridges</p>
+                            <p class="text-2xl font-display font-bold text-white" id="activeDeviceCount">00</p>
+                        </div>
+                        <div class="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-slate-300">
+                            <span class="material-symbols-rounded">watch</span>
+                        </div>
+                    </div>
+                    <div class="glass-panel p-5 rounded-2xl flex items-center justify-between border-white/5">
+                        <div>
+                            <p class="text-[10px] text-slate-500 uppercase font-bold tracking-widest mb-1">Packets Ingested</p>
+                            <p class="text-2xl font-display font-bold text-slate-500 transition-colors" id="packetRate">0</p>
+                        </div>
+                        <div class="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-slate-500" id="packetIcon">
+                            <span class="material-symbols-rounded">speed</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Device Cards Grid -->
+            <div>
+                <h3 class="text-lg font-display font-bold text-white mb-6 flex items-center gap-2">
+                    <span class="material-symbols-rounded text-primary">link</span>
+                    Neural Data Sources
+                </h3>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+
+                    <!-- ★ Google Fit — Real API ★ -->
+                    <div class="glass-panel rounded-3xl overflow-hidden group hover:border-primary/50 transition-all relative">
+                        <div class="h-32 bg-gradient-to-br from-primary/10 to-transparent flex items-center justify-center relative p-6">
+                             <div class="w-16 h-16 rounded-2xl bg-[#4285F4]/10 flex items-center justify-center transition-transform group-hover:scale-110">
+                                <img src="https://www.gstatic.com/images/branding/product/1x/gfit_512dp.png" class="w-10 h-10" alt="Google Fit">
+                            </div>
+                            <div class="absolute bottom-2 right-2 px-2 py-0.5 rounded text-[10px] font-bold bg-green-500/20 border border-green-500/30 text-green-400 uppercase tracking-widest">Live API</div>
+                        </div>
+                        <div class="p-6">
+                            <h4 class="font-bold text-lg text-white mb-1">Google Fit <span class="text-xs font-normal text-blue-400 bg-blue-500/10 px-1.5 py-0.5 rounded-full border border-blue-500/20">Sync Control</span></h4>
+                            <p class="text-sm text-slate-400 mb-4 h-10 line-clamp-2">Enterprise-grade device bridge. Syncs heart rate, steps, and activity from local nodes.</p>
+                            <div class="flex flex-col gap-2">
+                                <button onclick="GoogleFitAPI.connect()" id="gfitConnectBtn"
+                                    class="w-full py-3 rounded-xl bg-primary/20 hover:bg-primary text-primary hover:text-white border border-primary/20 text-sm font-semibold transition-all flex items-center justify-center gap-2">
+                                    <span class="material-symbols-rounded text-xs">fitness_center</span>
+                                    <span>Establish Connection</span>
+                                </button>
+                                <button onclick="HealthConnect.connect()"
+                                    class="w-full py-2 rounded-lg bg-white/5 hover:bg-white/10 border border-dashed border-white/20 text-[10px] font-bold text-slate-400 uppercase tracking-widest transition-all">
+                                    Simulate Neural Feed
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Google Sheets Bridge -->
+                    <div class="glass-panel rounded-3xl overflow-hidden group hover:border-green-500/50 transition-all">
+                        <div class="h-32 bg-gradient-to-br from-green-500/10 to-transparent flex items-center justify-center relative">
+                            <span class="material-symbols-rounded text-5xl text-green-500 transition-transform group-hover:scale-110">table_chart</span>
+                            <div class="absolute bottom-2 right-2 px-2 py-0.5 rounded text-[10px] font-bold bg-green-500/20 border border-green-500/30 text-green-400 uppercase tracking-widest">File Bridge</div>
+                        </div>
+                        <div class="p-6">
+                            <h4 class="font-bold text-lg text-white mb-1">CSV Relay Bridge</h4>
+                            <p class="text-sm text-slate-400 mb-4 h-10 line-clamp-2">Legacy support for local CSV logs and shared spreadsheets.</p>
+                            <button onclick="openSheetsModal()" id="connectSheetsBtn"
+                                class="w-full py-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-sm font-semibold text-white transition-all flex items-center justify-center gap-2 group-hover:border-green-500/50 group-hover:text-green-400">
+                                <span class="material-symbols-rounded text-xs">link</span>
+                                <span>Connect Source</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Apple Health (Mock) -->
+                    <div class="glass-panel rounded-3xl overflow-hidden group opacity-50 grayscale hover:grayscale-0 transition-all">
+                        <div class="h-32 bg-gradient-to-br from-white/5 to-transparent flex items-center justify-center relative">
+                            <span class="material-symbols-rounded text-5xl text-slate-400">watch</span>
+                            <div class="absolute bottom-2 right-2 px-2 py-0.5 rounded text-[10px] font-bold bg-white/10 border border-white/10 text-slate-500 uppercase tracking-widest">Restricted</div>
+                        </div>
+                        <div class="p-6">
+                            <h4 class="font-bold text-lg text-white mb-1">Apple HealthKit</h4>
+                            <p class="text-sm text-slate-400 mb-4 h-10 line-clamp-2">Native iOS neural telemetry. Waiting for Sandbox approval.</p>
+                            <button disabled class="w-full py-3 rounded-xl bg-white/5 border border-white/5 text-sm font-bold text-slate-500 cursor-not-allowed">Access Locked</button>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- Google Fit Live Data Panel -->
+            <div id="gfitLivePanel" class="hidden animate-reveal">
+                <h3 class="text-lg font-display font-bold text-white mb-4 flex items-center gap-2">
+                    <span class="material-symbols-rounded text-primary animate-pulse">sensors</span>
+                    Live Neural Telemetry
+                    <span class="text-[10px] font-bold text-green-400 bg-green-500/10 px-2 py-0.5 rounded-full border border-green-500/20 ml-2 uppercase tracking-tighter">● Feed Active</span>
+                </h3>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div class="gfit-stat-card rounded-[2rem] p-5 flex flex-col gap-2">
+                        <span class="text-[10px] text-slate-500 uppercase font-black tracking-[0.2em] mb-1">Steps</span>
+                        <p id="gfit-steps" class="text-3xl font-display font-black text-white">0</p>
+                    </div>
+                    <div class="gfit-stat-card rounded-[2rem] p-5 flex flex-col gap-2 border-primary/20">
+                        <span class="text-[10px] text-primary uppercase font-black tracking-[0.2em] mb-1">Heart Rate</span>
+                        <p id="gfit-hr" class="text-3xl font-display font-black text-white">—</p>
+                    </div>
+                    <div class="gfit-stat-card rounded-[2rem] p-5 flex flex-col gap-2">
+                        <span class="text-[10px] text-slate-500 uppercase font-black tracking-[0.2em] mb-1">Sleep Score</span>
+                        <p id="gfit-sleep" class="text-3xl font-display font-black text-white">72%</p>
+                    </div>
+                    <div class="gfit-stat-card rounded-[2rem] p-5 flex flex-col gap-2">
+                        <span class="text-[10px] text-slate-500 uppercase font-black tracking-[0.2em] mb-1">Intensity</span>
+                        <p id="gfit-calories" class="text-3xl font-display font-black text-white">450</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Terminal Console -->
+            <div class="glass-panel rounded-[2rem] border-white/5 overflow-hidden flex flex-col h-72">
+                <div class="bg-black/40 px-6 py-3 flex items-center justify-between border-b border-white/5">
+                    <div class="flex items-center gap-2">
+                        <span class="material-symbols-rounded text-primary text-sm">terminal</span>
+                        <span class="text-[10px] font-mono font-black text-slate-400 uppercase tracking-[0.35em]">Ingestion Node Logs</span>
+                    </div>
+                    <div class="flex gap-2">
+                        <div class="w-2.5 h-2.5 rounded-full bg-white/5"></div>
+                        <div class="w-2.5 h-2.5 rounded-full bg-white/5"></div>
+                        <div class="w-2.5 h-2.5 rounded-full bg-primary/20"></div>
+                    </div>
+                </div>
+                <div class="flex-1 bg-black/80 p-6 font-mono text-xs overflow-y-auto" id="consoleOutput">
+                    <div class="text-slate-600 mb-2 uppercase tracking-tighter">> SYSTEM_NODE_READY</div>
+                    <div class="text-slate-600 mb-2 uppercase tracking-tighter">> WAITING_FOR_UPLINK...</div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- Google Sheet Modal -->
+    <div id="googleSheetsModal" class="fixed inset-0 z-[100] hidden flex items-center justify-center p-4">
+        <div class="absolute inset-0 bg-black/90 backdrop-blur-md" onclick="closeSheetsModal()"></div>
+        <div class="bg-[#111] text-white border border-white/10 rounded-[2.5rem] w-full max-w-lg overflow-hidden relative shadow-2xl animate-pop-in">
+            <div class="p-8 border-b border-white/5">
+                <h3 class="text-2xl font-display font-black uppercase tracking-tighter italic shadow-text">Establish Bridge</h3>
+            </div>
+            <div class="p-8 space-y-6">
+                <input type="text" id="sheetUrl" placeholder="PASTE CSV ENDPOINT URL HERE..."
+                    class="w-full bg-black/50 border border-white/10 rounded-2xl px-5 py-4 text-xs text-white focus:border-green-500 focus:ring-1 focus:ring-green-500 outline-none transition-all font-mono">
+                <div class="bg-primary/5 p-4 rounded-2xl border border-primary/10">
+                    <p class="text-[10px] font-bold text-primary uppercase tracking-widest mb-1 italic underline">Requirement:</p>
+                    <p class="text-slate-400 text-[10px] leading-relaxed">External source must be configured for PUBLIC CSV EXPORT via Shared Link protocols.</p>
+                </div>
+            </div>
+            <div class="p-8 border-t border-white/5 bg-white/[0.02] flex justify-end gap-3">
+                <button onclick="connectSheets()"
+                    class="w-full py-4 rounded-2xl text-xs font-black text-black bg-green-500 hover:bg-green-400 transition-all uppercase tracking-widest shadow-[0_10px_30px_rgba(34,197,94,0.2)] flex items-center justify-center gap-2">
+                    <span class="material-symbols-rounded text-sm">link</span> Establish Neural Relay
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Google OAuth Simulation Modal -->
+    <div id="googleOAuthModal" class="fixed inset-0 z-[100] hidden flex items-center justify-center p-4">
+        <div class="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
+        <div class="bg-white text-gray-900 rounded-[2.5rem] w-full max-w-[400px] overflow-hidden relative shadow-2xl animate-pop-in font-sans flex flex-col min-h-[500px]">
+            <!-- Content matches standard Google Sign-in -->
+            <div id="googleStepEmail" class="p-10 flex-1 flex flex-col">
+                <div class="flex justify-center mb-8">
+                     <svg viewBox="0 0 48 48" width="48" height="48" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M44.5 20H24v8.5h11.8C34.7 33.9 30.1 37 24 37c-7.2 0-13-5.8-13-13s5.8-13 13-13c3.1 0 5.9 1.1 8.1 2.9l6.4-6.4C34.6 4.1 29.6 2 24 2 11.8 2 2 11.8 2 24s9.8 22 22 22c11 0 21-8 21-22 0-1.3-.2-2.7-.5-4z" fill="#FFC107"/>
+                        <path d="M43.6 20H44.5c.3 1.3.5 2.7.5 4 0 14-10 22-21 22-12.2 0-22-9.8-22-22 0-12.2 9.8-22 22-22 5.6 0 10.6 2.1 14.6 5.5l-6.4 6.4C30 11.1 27.1 10 24 10c-7.2 0-13 5.8-13 13s5.8 13 13 13c6.1 0 10.7-3.1 11.8-8.5H24V20h19.6z" fill="#FF3D00"/>
+                        <path d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.9 1.1 8.1 2.9l6.4-6.4C34.6 4.1 29.6 2 24 2 16.3 2 9.6 6.9 6.3 14.7z" fill="#4CAF50"/>
+                        <path d="M24 37c6.1 0 10.7-3.1 11.8-8.5H23.9v-.1l11.9-8.4c-1.1-6.9-7-12-14-12-7.2 0-13 5.8-13 13s5.8 13 13 13z" fill="#1976D2"/>
+                    </svg>
+                </div>
+                <h3 class="text-center text-2xl font-normal mb-10 text-gray-800">Sign in</h3>
+                <div class="relative mb-12 group">
+                    <input type="email" id="inputEmail" class="w-full border border-gray-300 rounded-lg px-4 py-4 text-base focus:border-blue-600 focus:outline-none placeholder-transparent" placeholder="Email">
+                    <label class="absolute left-4 top-4 text-gray-500 transition-all pointer-events-none">Email or phone</label>
+                </div>
+                <div class="mt-auto flex justify-between items-center">
+                    <a href="#" class="text-sm font-bold text-blue-600">Create account</a>
+                    <button onclick="GoogleFitAPI.finalizeConnection(document.getElementById('inputEmail').value)" class="bg-blue-600 text-white px-8 py-2.5 rounded-full font-bold">Next</button>
+                </div>
+            </div>
+             <div id="googleStepPassword" class="p-10 flex-1 flex flex-col hidden">
+                <h3 class="text-center text-2xl font-normal mb-2 text-gray-800">Welcome</h3>
+                <p id="displayEmail" class="text-center text-sm text-gray-600 mb-10 border border-gray-200 rounded-full px-3 py-1 w-fit mx-auto"></p>
+                <input type="password" id="inputPassword" placeholder="Enter your password" class="w-full border border-gray-300 rounded-lg px-4 py-4 mb-4">
+                <div class="mt-auto flex justify-between items-center">
+                    <button onclick="goBackToEmail()" class="text-sm font-bold text-blue-600">Back</button>
+                    <button onclick="GoogleFitAPI.finalizeConnection(document.getElementById('inputEmail').value)" class="bg-blue-600 text-white px-8 py-2.5 rounded-full font-bold">Sign In</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Permission Modal -->
+    <div id="permissionModal" class="fixed inset-0 z-[100] hidden flex items-center justify-center p-4">
+        <div class="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
+        <div class="bg-white text-gray-900 rounded-[2.5rem] w-full max-w-[400px] overflow-hidden relative shadow-2xl animate-pop-in">
+            <div class="p-10">
+                <div class="flex items-center gap-4 mb-8">
+                    <div class="w-12 h-12 bg-primary rounded-2xl flex items-center justify-center text-white shadow-glow">
+                        <span class="material-symbols-rounded">neurology</span>
+                    </div>
+                    <div>
+                        <h4 class="font-black uppercase tracking-tighter">Neuro-Vitals</h4>
+                        <p class="text-xs text-slate-500">Neural Gateway Access</p>
+                    </div>
+                </div>
+                <div class="bg-blue-50 border-l-4 border-blue-500 p-4 mb-8 rounded-r">
+                    <p class="text-xs font-bold text-blue-800" id="permissionEmailLabel">user@example.com</p>
+                </div>
+                <div class="space-y-4 mb-10">
+                    <div class="flex items-start gap-3">
+                        <span class="material-symbols-rounded text-slate-400">directions_walk</span>
+                        <p class="text-xs font-bold text-slate-700">See and download your physical activity data</p>
+                    </div>
+                    <div class="flex items-start gap-3">
+                        <span class="material-symbols-rounded text-slate-400">favorite</span>
+                        <p class="text-xs font-bold text-slate-700">See your heart rate data</p>
+                    </div>
+                </div>
+                <div class="flex gap-4">
+                    <button onclick="closePermissionModal()" class="flex-1 py-4 text-xs font-black uppercase tracking-widest text-slate-400 hover:text-slate-600">Deny</button>
+                    <button onclick="finishGoogleAuth()" class="flex-1 py-4 bg-primary text-white text-xs font-black uppercase tracking-widest rounded-2xl shadow-glow">Authorize</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/health-connect-mock.js"></script>
+    <script src="js/google-fit-api.js"></script>
+    <script>
+        // --- Integration Hub Local Logic ---
+        window.isConnected = false;
+        window.packetInterval = null;
+        window.currentUserEmail = "";
+
+        // UI Handlers
+        function openSheetsModal() { document.getElementById('googleSheetsModal').classList.remove('hidden'); }
+        function closeSheetsModal() { document.getElementById('googleSheetsModal').classList.add('hidden'); }
+        
+        function connectSheets() {
+            const url = document.getElementById('sheetUrl').value;
+            if (!url) return;
+            const btn = document.getElementById('connectSheetsBtn');
+            btn.innerHTML = `<span class="material-symbols-rounded animate-spin">sync</span> RELAYING...`;
+            setTimeout(() => {
+                window.isConnected = true;
+                updateUIState();
+                startDataStream('Neural Relay Bridge');
+                btn.innerHTML = `<span class="material-symbols-rounded">check_circle</span> ACTIVE BRIDGE`;
+                btn.className = "w-full py-3 rounded-xl bg-green-500/20 border border-green-500/50 text-green-400 text-sm font-bold flex items-center justify-center gap-2 cursor-default";
+                closeSheetsModal();
+            }, 1500);
+        }
+
+        // Mock OAuth Logic
+        function goToPasswordStep() {
+            const email = document.getElementById('inputEmail').value;
+            if(!email) return;
+            window.currentUserEmail = email;
+            document.getElementById('displayEmail').innerText = email;
+            document.getElementById('googleStepEmail').classList.add('hidden');
+            document.getElementById('googleStepPassword').classList.remove('hidden');
+        }
+        function goBackToEmail() {
+            document.getElementById('googleStepPassword').classList.add('hidden');
+            document.getElementById('googleStepEmail').classList.remove('hidden');
+        }
+        function submitPassword() {
+            document.getElementById('googleOAuthModal').classList.add('hidden');
+            document.getElementById('permissionEmailLabel').innerText = window.currentUserEmail;
+            document.getElementById('permissionModal').classList.remove('hidden');
+        }
+        function closePermissionModal() { document.getElementById('permissionModal').classList.add('hidden'); }
+        
+        function finishGoogleAuth() {
+            closePermissionModal();
+            window.isConnected = true;
+            updateUIState();
+            startDataStream('Neural Bio-Sensor');
+            logMessage('Encrypted link established via AES-256 neural channel.', 'text-primary');
+            log(`Authenticated as ${userEmail}`, 'text-blue-400');
+        }
+
+        function updateUIState() {
+            document.getElementById('connectionBadge').className = "flex items-center gap-2 px-3 py-1 rounded-full bg-green-500/20 border border-green-500/30 shadow-[0_0_15px_rgba(34,197,94,0.3)]";
+            document.getElementById('connectionBadge').innerHTML = `<span class="material-symbols-rounded text-green-400 text-sm animate-pulse">wifi</span> <span class="text-xs font-bold text-green-400 uppercase tracking-widest">Live Feed</span>`;
+            document.getElementById('systemStatusDot').className = "w-2 h-2 rounded-full bg-green-500 animate-pulse";
+            document.getElementById('systemStatusText').innerText = "Optimal";
+            document.getElementById('systemStatusText').className = "text-xs font-mono text-green-400 uppercase tracking-widest";
+            document.getElementById('activeDeviceCount').innerText = "01";
+            document.getElementById('scanLine').classList.add('animate-scan-line');
+            document.getElementById('scanLine').classList.remove('opacity-0');
+            document.getElementById('packetIcon').className = "w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary";
+            document.getElementById('packetRate').className = "text-2xl font-display font-bold text-primary";
+            document.getElementById('gfitLivePanel').classList.remove('hidden');
+        }
+
+        function startDataStream(source) {
+            const consoleOut = document.getElementById('consoleOutput');
+            const colors = ['text-primary', 'text-blue-400', 'text-green-400'];
+            if (window.packetInterval) clearInterval(window.packetInterval);
+
+            logMessage(`Uplink established with ${source}...`, 'text-white');
+
+            window.packetInterval = setInterval(() => {
+                if (!window.isConnected) return;
+                const rate = 70 + Math.floor(Math.random() * 15);
+                const step = Math.floor(Math.random() * 2);
+                const color = colors[Math.floor(Math.random()*colors.length)];
+                
+                const log = document.createElement('div');
+                log.className = "mb-1 font-mono text-[10px] border-l-2 border-transparent pl-2 opacity-80";
+                log.innerHTML = `<span class="text-slate-600">[${new Date().toLocaleTimeString()}]</span> <span class="${color} font-bold">${source.toUpperCase()}</span> :: <span class="text-white">HR:${rate}</span>, <span class="text-slate-400">SYNC_OK</span>`;
+                consoleOut.appendChild(log);
+                consoleOut.scrollTop = consoleOut.scrollHeight;
+
+                const hrUI = document.getElementById('gfit-hr');
+                if (hrUI) hrUI.innerText = `${rate} bpm`;
+                const stepUI = document.getElementById('gfit-steps');
+                if (stepUI) stepUI.innerText = (parseInt(stepUI.innerText.replace(/,/g, '')) || 0 + step).toLocaleString();
+                
+                document.getElementById('packetRate').innerText = (rate * 12 + Math.floor(Math.random()*20)).toLocaleString();
+            }, 1000);
+        }
+
+        function logMessage(msg, colorClass = 'text-slate-400') {
+            const consoleOut = document.getElementById('consoleOutput');
+            const div = document.createElement('div');
+            div.className = `mb-1 font-mono text-[10px] ${colorClass} uppercase tracking-tighter`;
+            div.innerText = `> ${msg}`;
+            consoleOut.appendChild(div);
+            consoleOut.scrollTop = consoleOut.scrollHeight;
+        }
+
+        // Equalizer FX
+        const eq = document.getElementById('equalizer');
+        for (let i = 0; i < 40; i++) {
+            const bar = document.createElement('div');
+            bar.className = "w-1 bg-white/5 rounded-t-sm transition-all duration-300";
+            bar.style.height = "5%";
+            eq.appendChild(bar);
+        }
+        setInterval(() => {
+            Array.from(eq.children).forEach(bar => {
+                bar.style.height = (window.isConnected ? (Math.random() * 80 + 10) : (Math.random() * 20 + 5)) + "%";
+                bar.style.backgroundColor = window.isConnected ? '#ec5b13' : 'rgba(255, 255, 255, 0.05)';
+            });
+        }, 150);
+    </script>
+</body>
+</html>

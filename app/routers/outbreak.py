@@ -33,22 +33,44 @@ router = APIRouter(prefix="/outbreak", tags=["outbreak"])
 async def analyze(
     request: Request,
     name: str = Form(...),
-    age: int = Form(...),
-    gender: str = Form(...),
+    age: str = Form("0"),
+    gender: str = Form("Other"),
     symptoms: str = Form(...),
-    severity: int = Form(...),
-    duration: int = Form(...),
+    severity: str = Form("5"),
+    duration: str = Form("1"),
     latitude: float = Form(None),
     longitude: float = Form(None),
+    form_id: str = Form(None),
     image: UploadFile = File(None),
 ):
     """Analyse patient symptoms via Gemini, classify, geo-tag, and save."""
     try:
+        # Robust parsing for numeric fields (handles empty strings from frontend)
+        try:
+            p_age = int(age) if age.strip() else 0
+        except:
+            p_age = 0
+            
+        try:
+            p_severity = int(severity) if severity.strip() else 5
+        except:
+            p_severity = 5
+            
+        try:
+            p_duration = int(duration) if duration.strip() else 1
+        except:
+            p_duration = 1
+
         location_data = await get_client_location(request, latitude, longitude)
 
         data = {
-            "name": name, "age": age, "gender": gender,
-            "symptoms": symptoms, "severity": severity, "duration": duration,
+            "name": name, 
+            "age": p_age, 
+            "gender": gender,
+            "symptoms": symptoms, 
+            "severity": p_severity, 
+            "duration": p_duration,
+            "form_id": form_id,
         }
 
         result = analyze_symptoms_with_gemini(data, image_file=image)

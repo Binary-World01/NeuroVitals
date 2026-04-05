@@ -27,6 +27,7 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="js/utils.js"></script>
     <script src="js/supabase-config.js"></script>
+    <script src="js/vitals-streamer.js"></script>
 
     <script>
         tailwind.config = {
@@ -605,6 +606,7 @@
             // Load Vitals from Supabase by UID
             loadSupabaseVitals();
             loadEmergencyContacts(email);
+            fetchMedicationData(email);
             
             // ── Google Fit Live Data Reader ──
             loadGfitData();
@@ -1121,6 +1123,26 @@
             }
         }
 
+        async function fetchMedicationData(email) {
+            try {
+                const res = await fetch(`${window.getApiBase()}/medications/${email}`);
+                const meds = await res.json();
+                const activeMed = meds.find(m => m.is_active);
+                
+                if (activeMed) {
+                    const nameEl = document.querySelector('.med-name');
+                    const doseEl = nameEl.nextElementSibling;
+                    const nextDoseLabel = document.querySelector('.med-container').previousElementSibling.querySelector('span');
+                    
+                    nameEl.textContent = activeMed.name;
+                    doseEl.textContent = activeMed.dosage || 'No dosage';
+                    if (nextDoseLabel && activeMed.time_of_day?.length > 0) {
+                        nextDoseLabel.textContent = `Next dose: ${activeMed.time_of_day[0]}`;
+                    }
+                }
+            } catch (err) { console.warn("Medication fetch failed", err); }
+        }
+
         // Action Buttons (Placeholders)
         function openSettings() {
             showToast('Settings panel opening...', 'info');
@@ -1131,7 +1153,7 @@
         }
 
         function openMedSchedule() {
-            showToast('Opening medication schedule...', 'info');
+            window.location.href = 'medication-management.html';
         }
 
         // SOS Button
@@ -1196,6 +1218,7 @@
             }
         });
     </script>
+    <script src="js/vitals-streamer.js"></script>
 </body>
 
 </html>

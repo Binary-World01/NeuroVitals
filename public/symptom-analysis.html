@@ -14,6 +14,7 @@
         rel="stylesheet" />
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="js/supabase-config.js"></script>
+    <script src="js/vitals-streamer.js"></script>
     <script src="js/utils.js"></script>
     <script>
         tailwind.config = {
@@ -379,11 +380,11 @@
             }
         }
 
-        const BACKEND_URL = "/api";
+        // Standardized backend URL detection
+        const BACKEND_URL = typeof getApiBase === 'function' ? getApiBase() : "/api";
 
         async function analyzeSymptoms(formData) {
             try {
-                // 1. Force fresh high-accuracy GPS capture for exact outbreak mapping
                 if (typeof getHighAccuracyLocation === 'function') {
                     const statusLabel = document.getElementById("sentinelStatus");
                     if (statusLabel) {
@@ -400,7 +401,6 @@
                         formData.append('location', gpsLoc.location);
                     }
                 } else {
-                    // Fallback to cached if util missing
                     const storedLoc = JSON.parse(localStorage.getItem('neurovitals_location') || '{}');
                     if (storedLoc.latitude) {
                         formData.append('latitude', storedLoc.latitude);
@@ -414,7 +414,7 @@
                 const response = await fetch(`${BACKEND_URL}/outbreak/analyze`, {
                     method: "POST",
                     body: formData,
-                    signal: AbortSignal.timeout(30000) // 30s timeout
+                    signal: AbortSignal.timeout(30000)
                 });
                 
                 if (!response.ok) {
@@ -439,133 +439,178 @@
             const symptomsText = formData.get("symptoms");
 
             resultDiv.innerHTML = "<div class='flex flex-col items-center justify-center h-full gap-4'><div class='w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin'></div><span class='text-primary font-bold animate-pulse uppercase tracking-widest'>Analyzing community threats...</span></div>";
-            localStorage.setItem('last_symptom_analysis', symptomsText); // For Admin Sync
+            localStorage.setItem('last_symptom_analysis', symptomsText);
 
             statusLabel.textContent = "SEQUENCING_DATA";
             statusLabel.className = "text-primary animate-pulse";
 
             try {
-                const data = await analyzeSymptoms(formData);
-
-                // --- PERSIST TO SUPABASE (Records Table) ---
-                const currentUser = JSON.parse(localStorage.getItem('neurovitals_currentUser'));
-                if (currentUser && currentUser.email) {
-                    try {
-                        const { data: formResult } = await window.supabaseClient
-                            .from('medical_forms')
-                            .select('formid')
-                            .eq('user_email', currentUser.email)
-                            .order('updated_at', { ascending: false })
-                            .limit(1)
-                            .single();
-                        
-                        if (formResult) {
-                            await window.supabaseClient.from('records').insert({
-                                form_id: formResult.formid,
-                                symptoms_data: {
-                                    symptoms: formData.get('symptoms'),
-                                    severity: formData.get('severity'),
-                                    duration: formData.get('duration'),
-                                    analysis: data.analysis
-                                },
-                                risk_level: data.analysis.toLowerCase().includes('high') ? 'High' : (data.analysis.toLowerCase().includes('moderate') ? 'Moderate' : 'Low'),
-                                recorded_at: new Date().toISOString()
-                            });
-                        }
-                    } catch (dbErr) { console.warn("Record sync failed", dbErr); }
-                }
-
-                // --- RENDERING LOGIC ---
-                const rawAnalysis = data.analysis || "## ERROR\nNo response from AI.";
-                let processedAnalysis = rawAnalysis;
-                if (!rawAnalysis.includes('##')) {
-                    const keywords = ["CONDITION", "IMPORTANT POINTS", "HIGHLIGHTS", "WHY IT OCCURS", "WHY THIS HAPPENS", "PATHOLOGY", "EXPLANATION", "PREVENTIVE", "NEXT STEPS", "DISCLAIMER"];
-                    keywords.forEach(kw => {
-                        const regex = new RegExp(`\\b(${kw})\\b:?`, 'gi');
-                        processedAnalysis = processedAnalysis.replace(regex, `\n## $1\n`);
-                    });
-                    if (!processedAnalysis.includes('##')) processedAnalysis = "## ANALYSIS\n" + processedAnalysis;
-                }
+                const result = await analyzeSymptoms(formData);
+                const analysisText = result.analysis;
                 
-                const sections = processedAnalysis.split('##').filter(s => s.trim());
-                let htmlOutput = '<div class="space-y-8 text-left font-sans max-w-4xl mx-auto">'; 
-                let diagnosticSummary = "AI Analysis Complete";
-
-                sections.forEach((section, index) => {
-                    const lines = section.trim().split('\n');
-                    const firstLine = lines[0].trim().toUpperCase();
-                    const contentText = lines.slice(1).join('\n').trim();
-
-                    if (!contentText && !firstLine.includes("CONDITION")) return;
-                    if (firstLine.includes("CONDITION")) diagnosticSummary = contentText;
-
-                    const delay = (index * 0.1).toFixed(1);
-                    let cardIcon = 'info', cardColor = 'primary', cardTitle = firstLine, cardBody = '';
-
-                    if (firstLine.includes("CONDITION")) {
-                        cardIcon = 'terminal'; cardColor = 'primary'; cardTitle = 'Diagnostic Signature';
-                        cardBody = `<h1 class="text-4xl font-black text-white leading-tight uppercase tracking-tighter">${contentText}</h1>`;
-                    } else if (firstLine.includes("IMPORTANT POINTS") || firstLine.includes("HIGHLIGHTS")) {
-                        cardIcon = 'bolt'; cardColor = 'neuro-orange'; cardTitle = 'Critical Insights';
-                        cardBody = `<div class="space-y-4">${contentText.split('\n').filter(l => l.trim()).map(line => `<div class="flex items-start gap-3 bg-white/5 p-4 rounded-2xl border border-white/5"><div class="w-1.5 h-1.5 rounded-full bg-neuro-orange mt-2 shrink-0 shadow-[0_0_8px_rgba(249,115,22,0.6)]"></div><p class="text-sm text-white/90 leading-relaxed font-medium">${line.replace(/^[-\*\d\.]+\s*/, '')}</p></div>`).join('')}</div>`;
-                    } else if (firstLine.includes("WHY THIS HAPPENS") || firstLine.includes("OCCURS") || firstLine.includes("ANALYSIS")) {
-                        cardIcon = 'psychology_alt'; cardColor = 'accent-blue'; cardTitle = firstLine.includes("ANALYSIS") ? "Medical Logic" : "Pathology Explanation";
-                        cardBody = `<p class="text-base text-slate-300 leading-relaxed bg-white/5 p-6 rounded-2xl border border-white/5">${contentText}</p>`;
-                    } else if (firstLine.includes("PREVENTIVE") || firstLine.includes("NEXT STEPS")) {
-                        const isNext = firstLine.includes("NEXT STEPS");
-                        cardIcon = isNext ? 'rocket_launch' : 'verified_user'; cardColor = isNext ? 'accent-blue' : 'neuro-green'; cardTitle = firstLine;
-                        cardBody = `<div class="grid grid-cols-1 md:grid-cols-2 gap-3">${contentText.split('\n').filter(l => l.trim()).map(line => `<div class="flex items-center gap-3 bg-white/5 border border-white/10 p-4 rounded-2xl hover:bg-white/10 transition-all group"><div class="w-2 h-2 rounded-full ${isNext ? 'bg-accent-blue' : 'bg-neuro-green'} group-hover:scale-125 transition-transform"></div><p class="text-xs font-bold text-white/80">${line.replace(/^[-\*\d\.]+\s*/, '')}</p></div>`).join('')}</div>`;
-                    } else if (firstLine.includes("DISCLAIMER")) {
-                        cardIcon = 'warning'; cardColor = 'neuro-red'; cardTitle = 'Medical Disclaimer';
-                        cardBody = `<p class="text-[10px] uppercase font-black tracking-[0.2em] text-neuro-red/60 text-center py-2">${contentText}</p>`;
-                    } else { cardBody = `<p class="text-sm text-slate-400">${contentText}</p>`; }
-
-                    htmlOutput += `<div class="glass-card rounded-[2rem] p-8 animate-slide-in relative overflow-hidden group shadow-2xl" style="animation-delay: ${delay}s"><div class="absolute -top-24 -right-24 w-48 h-48 bg-${cardColor}/5 blur-[60px] rounded-full group-hover:bg-${cardColor}/10 transition-colors"></div><div class="flex items-center gap-4 mb-6"><div class="w-12 h-12 rounded-2xl bg-${cardColor}/10 flex items-center justify-center text-${cardColor} shadow-inner border border-${cardColor}/20"><span class="material-symbols-rounded text-2xl">${cardIcon}</span></div><div><span class="text-lg font-black text-${cardColor} uppercase tracking-[0.15em] block mb-0.5">${cardTitle}</span><div class="h-1 w-12 bg-${cardColor}/40 rounded-full"></div></div></div><div class="relative z-10">${cardBody}</div></div>`;
-                });
-
-                htmlOutput += '</div>';
-                resultDiv.innerHTML = htmlOutput;
-                resultDiv.classList.remove("opacity-60");
-
-                // --- ALWAYS UNHIDE BRIDGE BUTTON ON SUCCESS ---
+                statusLabel.textContent = "DECODING_COMPLETE";
+                statusLabel.className = "text-green-400";
+                
+                renderAnalysis(analysisText);
                 moreBtn.classList.remove("hidden");
-                // --- UPDATE ADMIN SYNC (AI Results) ---
-                const adminNodeId = localStorage.getItem('current_admin_node_id');
-                if (adminNodeId && typeof updateAdminSymptoms === 'function') {
-                    await updateAdminSymptoms(adminNodeId, diagnosticSummary);
-                }
-
-                statusLabel.textContent = "SWEEP_COMPLETE";
-                statusLabel.className = "text-green-400 font-bold";
-
-            } catch (error) {
-                console.error("Diagnostic Sweep Failure:", error);
                 
-                let errorHtml = `<div class='text-red-400 font-bold p-6 bg-red-950/20 rounded-2xl border border-red-500/20'>
-                    <div class='flex items-center gap-3 mb-4'>
-                        <span class='material-symbols-rounded text-2xl'>error</span>
-                        <span class='uppercase tracking-tighter'>Connection Protocol Error</span>
+            } catch (err) {
+                console.error("Submission Error:", err);
+                const errorHtml = `
+                <div class='glass-panel rounded-3xl p-8 border border-red-500/20 bg-red-500/5 text-center'>
+                    <div class='flex items-center gap-3 mb-4 justify-center'>
+                        <span class='material-symbols-rounded text-2xl text-red-500'>error</span>
+                        <span class='uppercase tracking-tighter text-red-400 font-bold'>Connection Protocol Error</span>
                     </div>
-                    <p class='text-sm font-normal text-red-200/60 leading-relaxed mb-6'>
-                        The AI Analysis engine is currently unreachable. If you are running locally, ensure your backend server is started. If on Vercel, check the function logs.
+                    <p class='text-sm text-slate-400 leading-relaxed mb-6'>
+                        ${err.message.includes('API_ERROR') ? `The API returned an error: <b>${err.message}</b>` : "The AI Analysis engine is currently unreachable. Please ensure the backend server is running on port 8000."}
                     </p>
-                    <div class='bg-black/40 p-4 rounded-xl border border-white/5 text-left'>
-                        <p class='text-[10px] uppercase font-black text-slate-500 mb-2 tracking-widest'>Local Development Guide</p>
+                    <div class='bg-black/40 p-4 rounded-xl border border-white/5 text-left mb-6'>
+                        <p class='text-[10px] uppercase font-black text-slate-500 mb-2 tracking-widest'>Required Action: Start Backend</p>
                         <code class='text-[11px] font-mono text-primary block break-all leading-relaxed'>
-                            # Start backend from project root<br>
-                            python -m app.main
+                            cd neuro-vitals<br>
+                            & ".\\venv_win\\Scripts\\python.exe" -m app.main
                         </code>
                     </div>
-                    <button onclick='location.reload()' class='mt-6 w-full py-2 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs font-bold uppercase transition-all'>
+                    <p class="text-[10px] text-slate-500 mb-4">Attempted Endpoint: <code class="text-primary">${BACKEND_URL}/outbreak/analyze</code></p>
+                    <button onclick='location.reload()' class='w-full py-3 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs font-bold uppercase transition-all'>
                         Retry Diagnostic Connection
                     </button>
                 </div>`;
-                
                 resultDiv.innerHTML = errorHtml;
                 statusLabel.textContent = "LINK_FAILURE";
                 statusLabel.className = "text-red-500";
             }
         });
+
+        function renderAnalysis(text) {
+            const resultDiv = document.getElementById("result");
+            
+            // Advanced parsing for [SENTINEL_...] tags used by the backend service
+            const sections = {
+                condition: text.match(/\[SENTINEL_CONDITION\]\s*([\s\S]*?)(?=\[SENTINEL_|$)/i)?.[1]?.trim() || "Undetermined",
+                explanation: text.match(/\[SENTINEL_EXPLANATION\]\s*([\s\S]*?)(?=\[SENTINEL_|$)/i)?.[1]?.trim() || "",
+                precautions: text.match(/\[SENTINEL_PRECAUTIONS\]\s*([\s\S]*?)(?=\[SENTINEL_|$)/i)?.[1]?.trim() || "",
+                nextSteps: text.match(/\[SENTINEL_NEXT_STEPS\]\s*([\s\S]*?)(?=\[SENTINEL_|$)/i)?.[1]?.trim() || "",
+                disclaimer: text.match(/\[SENTINEL_DISCLAIMER\]\s*([\s\S]*?)(?=\[SENTINEL_|$)/i)?.[1]?.trim() || "Medical Disclaimer: This is an AI analysis and not a formal medical diagnosis."
+            };
+
+            // Fallback for legacy format or unexpected AI output
+            if (sections.condition === "Undetermined") {
+                sections.condition = text.match(/POSSIBLE CONDITION:\s*(.*)/i)?.[1] || "Undetermined";
+                if (!sections.explanation) sections.explanation = text.match(/EXPLANATION:\s*([\s\S]*?)(?=PRECAUTIONS:|NEXT STEPS:|DISCLAIMER:|$)/i)?.[1]?.trim() || "";
+                if (!sections.precautions) sections.precautions = text.match(/PRECAUTIONS:\s*([\s\S]*?)(?=NEXT STEPS:|DISCLAIMER:|$)/i)?.[1]?.trim() || "";
+                if (!sections.nextSteps) sections.nextSteps = text.match(/NEXT STEPS:\s*([\s\S]*?)(?=DISCLAIMER:|$)/i)?.[1]?.trim() || "";
+                if (!sections.disclaimer) sections.disclaimer = text.match(/DISCLAIMER:\s*([\s\S]*?)(?=$)/i)?.[1]?.trim() || "Medical Disclaimer: This is an AI analysis and not a formal medical diagnosis.";
+            }
+
+            let html = `
+                <div class="space-y-6 animate-slide-in">
+                    <!-- 1. Diagnostic Signature -->
+                    <div class="glass-card rounded-[2rem] p-8 relative overflow-hidden group shadow-2xl">
+                        <div class="absolute -top-24 -right-24 w-48 h-48 bg-primary/5 blur-[60px] rounded-full group-hover:bg-primary/10 transition-colors"></div>
+                        <div class="flex items-center gap-4 mb-6">
+                            <div class="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shadow-inner border border-primary/20">
+                                <span class="material-symbols-rounded text-2xl">terminal</span>
+                            </div>
+                            <div>
+                                <span class="text-lg font-black text-primary uppercase tracking-[0.15em] block mb-0.5">Diagnostic Signature</span>
+                                <div class="h-1 w-12 bg-primary/40 rounded-full"></div>
+                            </div>
+                        </div>
+                        <h1 class="text-4xl font-black text-white leading-tight uppercase tracking-tighter relative z-10">${sections.condition}</h1>
+                    </div>
+
+                    <!-- 2. Pathological Explanation -->
+                    <div class="glass-card rounded-[2rem] p-8 relative overflow-hidden group shadow-2xl" style="animation-delay: 0.1s">
+                        <div class="absolute -top-24 -right-24 w-48 h-48 bg-accent-blue/5 blur-[60px] rounded-full group-hover:bg-accent-blue/10 transition-colors"></div>
+                        <div class="flex items-center gap-4 mb-6">
+                            <div class="w-12 h-12 rounded-2xl bg-accent-blue/10 flex items-center justify-center text-accent-blue shadow-inner border border-accent-blue/20">
+                                <span class="material-symbols-rounded text-2xl">psychology_alt</span>
+                            </div>
+                            <div>
+                                <span class="text-lg font-black text-accent-blue uppercase tracking-[0.15em] block mb-0.5">Pathology Explanation</span>
+                                <div class="h-1 w-12 bg-accent-blue/40 rounded-full"></div>
+                            </div>
+                        </div>
+                        <p class="text-base text-slate-300 leading-relaxed bg-white/5 p-6 rounded-2xl border border-white/5 relative z-10">${sections.explanation}</p>
+                    </div>
+
+                    <!-- 3. Safety Precautions -->
+                    ${sections.precautions ? `
+                    <div class="glass-card rounded-[2rem] p-8 relative overflow-hidden group shadow-2xl" style="animation-delay: 0.2s">
+                        <div class="absolute -top-24 -right-24 w-48 h-48 bg-neuro-orange/5 blur-[60px] rounded-full group-hover:bg-neuro-orange/10 transition-colors"></div>
+                        <div class="flex items-center gap-4 mb-6">
+                            <div class="w-12 h-12 rounded-2xl bg-neuro-orange/10 flex items-center justify-center text-neuro-orange shadow-inner border border-neuro-orange/20">
+                                <span class="material-symbols-rounded text-2xl">bolt</span>
+                            </div>
+                            <div>
+                                <span class="text-lg font-black text-neuro-orange uppercase tracking-[0.15em] block mb-0.5">Critical Precautions</span>
+                                <div class="h-1 w-12 bg-neuro-orange/40 rounded-full"></div>
+                            </div>
+                        </div>
+                        <div class="space-y-4 relative z-10">
+                            ${sections.precautions.split('\n').filter(l => l.trim()).map(line => `
+                                <div class="flex items-start gap-3 bg-white/5 p-4 rounded-2xl border border-white/5">
+                                    <div class="w-1.5 h-1.5 rounded-full bg-neuro-orange mt-2 shrink-0 shadow-[0_0_8px_rgba(249,115,22,0.6)]"></div>
+                                    <p class="text-sm text-white/90 leading-relaxed font-medium">${line.replace(/^[-\*\d\.]+\s*/, '')}</p>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>` : ''}
+
+                    <!-- 4. Recommended Protocol -->
+                    <div class="glass-card rounded-[2rem] p-8 relative overflow-hidden group shadow-2xl" style="animation-delay: 0.3s">
+                        <div class="absolute -top-24 -right-24 w-48 h-48 bg-neuro-green/5 blur-[60px] rounded-full group-hover:bg-neuro-green/10 transition-colors"></div>
+                        <div class="flex items-center gap-4 mb-6">
+                            <div class="w-12 h-12 rounded-2xl bg-neuro-green/10 flex items-center justify-center text-neuro-green shadow-inner border border-neuro-green/20">
+                                <span class="material-symbols-rounded text-2xl">rocket_launch</span>
+                            </div>
+                            <div>
+                                <span class="text-lg font-black text-neuro-green uppercase tracking-[0.15em] block mb-0.5">Next Steps</span>
+                                <div class="h-1 w-12 bg-neuro-green/40 rounded-full"></div>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 relative z-10">
+                            ${sections.nextSteps.split('\n').filter(l => l.trim()).map(line => `
+                                <div class="flex items-center gap-3 bg-white/5 border border-white/10 p-4 rounded-2xl hover:bg-white/10 transition-all group">
+                                    <div class="w-2 h-2 rounded-full bg-neuro-green group-hover:scale-125 transition-transform"></div>
+                                    <p class="text-xs font-bold text-white/80">${line.replace(/^[-\*\d\.]+\s*/, '')}</p>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+
+                    <!-- 5. Professional AI Disclaimer -->
+                    <div class="p-8 rounded-[2rem] bg-neuro-red/5 border border-neuro-red/20 mt-12 relative overflow-hidden">
+                        <div class="absolute top-0 right-0 p-6 text-neuro-red/10">
+                            <span class="material-symbols-rounded text-6xl">gavel</span>
+                        </div>
+                        <div class="flex items-start gap-4 mb-4">
+                            <div class="w-10 h-10 rounded-xl bg-neuro-red/10 flex items-center justify-center text-neuro-red border border-neuro-red/20 shadow-inner">
+                                <span class="material-symbols-rounded">warning</span>
+                            </div>
+                            <div>
+                                <h3 class="text-xs font-black text-neuro-red uppercase tracking-[0.2em] mb-1">Professional Protocol Notice</h3>
+                                <p class="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Legal Status: ADVISORY_ONLY</p>
+                            </div>
+                        </div>
+                        <div class="space-y-4">
+                            <p class="text-xs text-red-200/70 leading-relaxed font-medium italic">
+                                "${sections.disclaimer}"
+                            </p>
+                            <div class="h-[1px] w-full bg-neuro-red/10"></div>
+                            <p class="text-[10px] text-slate-500 leading-relaxed uppercase font-bold tracking-tight">
+                                This assessment was generated by Neuro-Vitals Sentinel Engine. It is not a medical diagnosis or treatment plan. 
+                                <span class="text-neuro-red/80">If you are experiencing a life-threatening emergency, please contact emergency services immediately.</span> 
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            resultDiv.innerHTML = html;
+        }
 
         // Bridge to Debatable AI (Request Verification)
         document.getElementById("moreAccuracyBtn").addEventListener("click", function() {

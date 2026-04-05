@@ -66,6 +66,21 @@ CREATE TABLE IF NOT EXISTS risk_predictions (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS user_vitals (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_email TEXT UNIQUE NOT NULL,
+  steps INTEGER DEFAULT 0,
+  heart_rate INTEGER DEFAULT 0,
+  sleep_hours NUMERIC(4,2) DEFAULT 0.0,
+  calories INTEGER DEFAULT 0,
+  source TEXT DEFAULT 'google_fit',
+  recorded_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- ----------------------------------------------------------------
+-- google_fit_tokens
+-- ----------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS google_fit_tokens (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   user_id UUID REFERENCES users(id) ON DELETE CASCADE NOT NULL,

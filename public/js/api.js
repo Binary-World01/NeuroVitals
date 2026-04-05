@@ -3,8 +3,8 @@
  * Handles interactions with Google Gemini High-Performance AI
  */
 
-const GEMINI_API_KEY = "YOUR_GEMINI_API_KEY";
-const GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent";
+const GEMINI_API_KEY = "YOUR_GOOGLE_GEMINI_API_KEY_HERE";
+const GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
 
 /**
  * Analyzes symptoms using Google Gemini Flash
@@ -63,88 +63,65 @@ async function fetchWithRetry(url, options, retries = 3, backoff = 2000) {
 }
 
 async function analyzeSymptoms(data) {
-    const prompt = `
-        You are Neuro-Vitals AI, a specialized neurological diagnostic assistant.
-        Analyze the following patient data and provide a diagnostic assessment.
+    try {
+        console.log("🚀 [API] Routing symptom analysis through backend...");
         
-        Patient Profile:
-        - Age: ${data.age}
-        - Gender: ${data.gender}
-        - Reported Symptoms: "${data.symptoms}"
-        - Self-Reported Severity: ${data.severity}/10
-        ${data.history ? `- Medical History: ${data.history}` : ''}
-
-        Return a JSON response strictly in this format (no markdown code blocks):
-        {
-            "diagnosis": "Short diagnostic title",
-            "confidence": 85,
-            "summary": "1-sentence clinical summary.",
-            "reasoning": [
+        // Transform frontend data to match backend PatientProfile schema
+        const backendData = {
+            age: parseInt(data.age),
+            gender: data.gender,
+            symptoms: [
                 {
-                    "icon": "bloodtype", 
-                    "title": "Factor 1",
-                    "description": "Explanation of why this is relevant."
-                },
-                {
-                    "icon": "neurology",
-                    "title": "Factor 2",
-                    "description": "Explanation."
-                },
-                {
-                    "icon": "history",
-                    "title": "Factor 3",
-                    "description": "Explanation."
+                    description: data.symptoms,
+                    severity: parseInt(data.severity),
+                    duration_days: 1 // Default if not provided
                 }
             ],
-            "recommendation": "Clinical recommendation."
-        }
-        
-        Ensure "confidence" is a number between 0-100.
-        Ensure "icon" is a valid Material Symbols Rounded icon name.
-        IMPORTANT: Do not use real newlines in string values. Use escaped \\n only.
-    `;
+            medical_history: data.history ? [data.history] : [],
+            current_medications: []
+        };
 
-    try {
-        const response = await fetchWithRetry(`${GEMINI_URL}?key=${GEMINI_API_KEY}`, {
+        const response = await fetch("/api/diagnosis/analyze", {
             method: "POST",
             headers: {
                 "Content-Type": "application/json"
             },
-            body: JSON.stringify({
-                contents: [{
-                    parts: [{ text: prompt }]
-                }],
-                generationConfig: {
-                    temperature: 0.2, // Low temperature for consistent medical results
-                    topK: 40,
-                    topP: 0.95,
-                    maxOutputTokens: 1024,
-                    responseMimeType: "application/json"
-                }
-            })
+            body: JSON.stringify(backendData)
         });
 
+        if (!response.ok) {
+            throw new Error(`Backend Error: ${response.status}`);
+        }
+
         const result = await response.json();
-
-        const parsed = cleanAndParseJSON(result.candidates[0].content.parts[0].text);
-        if (!parsed) throw new Error("Failed to parse AI response");
-
-        return parsed;
+        
+        // Map backend DiagnosisResult to frontend expected format
+        return {
+            diagnosis: result.primary_diagnosis,
+            confidence: Math.round(result.confidence * 100),
+            summary: result.reasoning[0] || "Analysis completed.",
+            reasoning: result.reasoning.map((r, i) => ({
+                icon: i === 0 ? "neurology" : (i === 1 ? "history" : "description"),
+                title: `Observation ${i + 1}`,
+                description: r
+            })),
+            recommendation: result.recommendations.join(". ")
+        };
 
     } catch (error) {
-        console.error("Analyze Error:", error);
+        console.error("Analyze Error (Backend Redirect):", error);
         return {
             diagnosis: "Analysis Error",
             confidence: 0,
-            summary: "Could not interpret AI response. Please try again.",
+            summary: "Could not connect to backend analysis engine.",
             reasoning: [],
-            recommendation: "Retry Analysis"
+            recommendation: "Ensure backend is running and try again."
         };
     }
 }
 
 
-const GROQ_API_KEY = "YOUR_GROQ_API_KEY";
+const GROQ_API_KEY = "YOUR_GROQ_API_KEY_HERE";
 const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
 
 /**

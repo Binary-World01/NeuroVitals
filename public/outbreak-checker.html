@@ -322,7 +322,11 @@
             try {
                 const formData = new FormData(this);
 
-                const response = await fetch("/api/outbreak/analyze", {
+                const currentBase = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+                    ? "http://localhost:8000"
+                    : "";
+
+                const response = await fetch(`${currentBase}/api/outbreak/analyze`, {
                     method: "POST",
                     body: formData
                 });

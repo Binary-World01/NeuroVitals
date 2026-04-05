@@ -15,12 +15,14 @@ class SymptomInput(BaseModel):
     onset_time: Optional[str] = Field(None, description="morning/afternoon/evening/night")
 
 
+from typing import List, Optional, Union
+
 class PatientProfile(BaseModel):
     """Complete patient profile"""
-    patient_id: str
+    patient_id: Optional[str] = "anonymous"
     age: int
     gender: str
-    symptoms: List[SymptomInput]
+    symptoms: Union[List[SymptomInput], str]
     medical_history: Optional[List[str]] = Field(default_factory=list)
     current_medications: Optional[List[str]] = Field(default_factory=list)
 
@@ -59,3 +61,24 @@ class CommunityHealthData(BaseModel):
     trending_symptoms: List[tuple]
     area_data: List[dict]
     map_points: List[dict]
+
+
+class MedicationBase(BaseModel):
+    name: str
+    dosage: Optional[str] = None
+    frequency: Optional[str] = None
+    time_of_day: Optional[List[str]] = Field(default_factory=list)
+    is_active: bool = True
+
+
+class MedicationCreate(MedicationBase):
+    pass
+
+
+class Medication(MedicationBase):
+    id: str
+    user_id: str
+    created_at: datetime
+
+    class Config:
+        from_attributes = True

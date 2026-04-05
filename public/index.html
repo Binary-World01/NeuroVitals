@@ -1204,6 +1204,35 @@
         });
 
         // Page Navigation
+        // Helper function for custom table login
+        async function loginUser(email, password) {
+            console.log("Attempting custom table login...");
+            try {
+                const { data, error } = await window.supabaseClient
+                    .from('profiles')
+                    .select('*')
+                    .eq('email', email)
+                    .eq('password', password)
+                    .single();
+                return { data, error };
+            } catch (err) {
+                return { data: null, error: err };
+            }
+        }
+
+        // Helper function for custom table updates
+        async function upsertUserProfile(profileData) {
+            console.log("Upserting user profile...");
+            try {
+                const { data, error } = await window.supabaseClient
+                    .from('profiles')
+                    .upsert(profileData);
+                return { data, error };
+            } catch (err) {
+                return { data: null, error: err };
+            }
+        }
+
         function loginAsAdmin() {
             document.getElementById('signInEmail').value = 'admin';
             document.getElementById('signInPassword').value = 'admin123';
@@ -1211,22 +1240,28 @@
         }
 
         function showSignIn() {
-            document.getElementById('landingPage').classList.add('hidden');
-            document.getElementById('signUpForm').classList.add('hidden');
+            console.log("Showing Sign In Form");
+            document.getElementById('landingPage').style.display = 'none';
+            document.getElementById('signUpForm').style.display = 'none';
+            document.getElementById('signInForm').style.display = 'flex';
             document.getElementById('signInForm').classList.remove('hidden');
             window.scrollTo(0, 0);
         }
 
         function showSignUp() {
-            document.getElementById('landingPage').classList.add('hidden');
-            document.getElementById('signInForm').classList.add('hidden');
+            console.log("Showing Sign Up Form");
+            document.getElementById('landingPage').style.display = 'none';
+            document.getElementById('signInForm').style.display = 'none';
+            document.getElementById('signUpForm').style.display = 'flex';
             document.getElementById('signUpForm').classList.remove('hidden');
             window.scrollTo(0, 0);
         }
 
         function showLanding() {
-            document.getElementById('signInForm').classList.add('hidden');
-            document.getElementById('signUpForm').classList.add('hidden');
+            console.log("Showing Landing Page");
+            document.getElementById('signInForm').style.display = 'none';
+            document.getElementById('signUpForm').style.display = 'none';
+            document.getElementById('landingPage').style.display = 'block';
             document.getElementById('landingPage').classList.remove('hidden');
             window.scrollTo(0, 0);
         }

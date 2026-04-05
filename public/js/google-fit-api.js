@@ -6,7 +6,7 @@ const GoogleFitAPI = (() => {
     // ─── CONFIG ────────────────────────────────────────────────────────────────
     const CLIENT_ID = 'YOUR_GOOGLE_CLIENT_ID';
     const CLIENT_SECRET = 'YOUR_GOOGLE_CLIENT_SECRET';
-    const REDIRECT_URI = 'http://localhost:5500/integrations.html';
+    const REDIRECT_URI = window.location.origin + '/integrations.html';
 
     const SCOPES = [
         'https://www.googleapis.com/auth/fitness.activity.read',

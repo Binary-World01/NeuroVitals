@@ -1,0 +1,1540 @@
+<!DOCTYPE html>
+<html class="dark" lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>Neuro-Vitals | AI-Powered Healthcare Intelligence</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/supabase-config.js"></script>
+    <script src="js/utils.js"></script>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@300;400;500;600;700;800;900&family=Poppins:wght@700;800;900&family=Inter:wght@400;500;600;700&display=swap"
+        rel="stylesheet" />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200"
+        rel="stylesheet" />
+    <script>tailwind.config = { darkMode: "class", theme: { extend: { colors: { "primary": "#ec5b13", "accent-blue": "#00d2ff", "background-dark": "#1a0f0a" }, fontFamily: { "display": ["Public Sans", "sans-serif"] } } } };</script>
+    <style>
+        body {
+            font-family: 'Public Sans', sans-serif;
+            background: #0a0604;
+            color: #ffffff;
+        }
+
+        /* Smooth Scrolling */
+        html {
+            scroll-behavior: smooth;
+        }
+
+        /* Glass Morphism */
+        .glass-card {
+            background: rgba(255, 255, 255, 0.02);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        /* Gradient Backgrounds */
+        .gradient-orange {
+            background: linear-gradient(135deg, #ec5b13 0%, #ff8a3d 100%);
+        }
+
+        .gradient-blue {
+            background: linear-gradient(135deg, #00d2ff 0%, #00a3cc 100%);
+        }
+
+        /* Fade In Animation */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(40px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .fade-in-up {
+            animation: fadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            opacity: 0;
+        }
+
+        /* Scroll Reveal */
+        .scroll-reveal {
+            opacity: 0;
+            transform: translateY(60px);
+            transition: all 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .scroll-reveal.revealed {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* Feature Card Hover */
+        .feature-card {
+            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .feature-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 20px 60px rgba(236, 91, 19, 0.25);
+            border-color: rgba(236, 91, 19, 0.3);
+        }
+
+        /* Gradient Text */
+        .gradient-text {
+            background: linear-gradient(135deg, #ffffff 0%, #ec5b13 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        /* Floating Animation */
+        @keyframes float {
+
+            0%,
+            100% {
+                transform: translateY(0);
+            }
+
+            50% {
+                transform: translateY(-20px);
+            }
+        }
+
+        .float {
+            animation: float 6s ease-in-out infinite;
+        }
+
+        /* Navbar on Scroll */
+        .navbar-scrolled {
+            background: rgba(10, 6, 4, 0.95);
+            backdrop-filter: blur(20px);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        /* Navbar Link Hover Effect */
+        nav a {
+            position: relative;
+            display: inline-block;
+        }
+
+        nav a::after {
+            content: '';
+            position: absolute;
+            bottom: -4px;
+            left: 0;
+            width: 0;
+            height: 2px;
+            background: linear-gradient(90deg, #ec5b13, #ff8a3d);
+            box-shadow: 0 0 10px #ec5b13, 0 0 20px #ec5b13;
+            transition: width 0.3s ease;
+        }
+
+        nav a:hover::after {
+            width: 100%;
+        }
+
+        /* Neural Network Background */
+        #neuralNetwork {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            opacity: 0.4;
+            pointer-events: none;
+        }
+
+        /* Button Animations */
+        .btn-glow:hover {
+            box-shadow: 0 0 30px rgba(236, 91, 19, 0.6);
+        }
+
+        /* Stats Counter */
+        .stat-number {
+            font-variant-numeric: tabular-nums;
+        }
+
+        /* Product Screenshot */
+        .product-screen {
+            border-radius: 1rem;
+            box-shadow: 0 40px 120px rgba(0, 0, 0, 0.5);
+            transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .product-screen:hover {
+            transform: scale(1.02) translateY(-10px);
+        }
+
+        /* Timeline */
+        .timeline-line {
+            position: absolute;
+            left: 50%;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: linear-gradient(180deg, transparent, #ec5b13, transparent);
+        }
+
+        /* Testimonial Card */
+        .testimonial-card {
+            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .testimonial-card:hover {
+            transform: scale(1.05);
+        }
+
+        /* Page Transitions */
+        .page-section {
+            transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .page-section.hidden {
+            opacity: 0;
+            transform: scale(0.95);
+            pointer-events: none;
+            position: fixed;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 12px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #0a0604;
+            border-left: 1px solid rgba(236, 91, 19, 0.1);
+        }
+          ::-webkit-scrollbar-thumb {
+            background: linear-gradient(180deg, #ec5b13 0%, #ff8a3d 100%);
+            border-radius: 6px;
+            border: 2px solid #0a0604;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: linear-gradient(180deg, #ff6b2b 0%, #ffaa5d 100%);
+            box-shadow: 0 0 10px rgba(236, 91, 19, 0.5);
+        }
+
+        ::-webkit-scrollbar-thumb:active {
+            background: linear-gradient(180deg, #d64e0f 0%, #ec5b13 100%);
+        }
+
+        /* Firefox Scrollbar */
+        * {
+            scrollbar-width: thin;
+            scrollbar-color: #ec5b13 #0a0604;
+        }
+
+
+        /* Auth Page Animations */
+        @keyframes floatParticle {
+            0% {
+                transform: translateY(100vh) scale(0);
+                opacity: 0;
+            }
+
+            10% {
+                opacity: 0.6;
+            }
+
+            90% {
+                opacity: 0.6;
+            }
+
+            100% {
+                transform: translateY(-100vh) scale(1);
+                opacity: 0;
+            }
+        }
+
+        .auth-particle {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            background: radial-gradient(circle, #ec5b13, transparent);
+            border-radius: 50%;
+            animation: floatParticle 8s infinite ease-in-out;
+        }
+
+        @keyframes iconPulse {
+
+            0%,
+            100% {
+                transform: scale(1);
+                box-shadow: 0 20px 60px rgba(236, 91, 19, 0.4);
+            }
+
+            50% {
+                transform: scale(1.05);
+                box-shadow: 0 25px 80px rgba(236, 91, 19, 0.6);
+            }
+        }
+
+        .auth-icon-pulse {
+            animation: iconPulse 3s ease-in-out infinite;
+        }
+
+        @keyframes slideUpFade {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .auth-slide-up {
+            animation: slideUpFade 0.6s ease-out forwards;
+            opacity: 0;
+        }
+
+        .auth-form-container {
+            animation: slideUpFade 0.8s ease-out;
+        }
+
+        .auth-input:focus {
+            box-shadow: 0 0 0 3px rgba(236, 91, 19, 0.1);
+        }
+
+        .auth-button:hover {
+            transform: translateY(-2px);
+        }
+
+        .auth-button:active {
+            transform: scale(0.98);
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Neural Network Background -->
+    <canvas id="neuralNetwork"></canvas>
+
+    <!-- Navbar -->
+    <nav id="navbar" class="fixed top-0 w-full z-50 px-8 py-5 transition-all duration-300">
+        <div class="max-w-7xl mx-auto flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div
+                    class="size-10 rounded-xl bg-gradient-orange flex items-center justify-center shadow-lg shadow-primary/30">
+                    <span class="material-symbols-rounded text-white text-xl">neurology</span>
+                </div>
+                <div>
+                    <h1 class="text-lg font-bold">Neuro-Vitals</h1>
+                    <p class="text-[9px] uppercase tracking-wider text-primary font-bold">Medical AI</p>
+                </div>
+            </div>
+
+            <div class="hidden md:flex items-center gap-8">
+                <a href="#features"
+                    class="text-sm font-medium text-white/70 hover:text-white transition-colors">Features</a>
+                <a href="#product"
+                    class="text-sm font-medium text-white/70 hover:text-white transition-colors">Product</a>
+                <a href="#how-it-works" class="text-sm font-medium text-white/70 hover:text-white transition-colors">How
+                    It Works</a>
+                <a href="#testimonials"
+                    class="text-sm font-medium text-white/70 hover:text-white transition-colors">Testimonials</a>
+            </div>
+
+            <div class="flex gap-3">
+                <button onclick="showSignIn()"
+                    class="px-5 py-2 rounded-lg font-semibold text-sm hover:bg-white/5 transition-all">
+                    Sign In
+                </button>
+                <button onclick="showSignUp()"
+                    class="px-5 py-2 rounded-lg gradient-orange font-bold text-sm shadow-lg shadow-primary/30 hover:shadow-primary/50 transition-all btn-glow">
+                    Get Started
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Landing Page Content -->
+    <div id="landingPage" class="page-section">
+        <!-- Hero Section -->
+        <section class="min-h-screen flex items-center justify-center px-8 pt-32 pb-20">
+            <div class="max-w-6xl w-full text-center">
+                <div class="fade-in-up mb-6" style="animation-delay: 0.1s">
+                    <span
+                        class="px-4 py-2 rounded-full glass-card text-xs font-bold text-primary border border-primary/20 inline-flex items-center gap-2">
+                        <span class="w-2 h-2 rounded-full bg-primary animate-pulse"></span>
+                        Introducing AI-Powered Healthcare
+                    </span>
+                </div>
+
+                <h1 class="text-6xl md:text-7xl lg:text-8xl font-black mb-6 leading-tight fade-in-up"
+                    style="animation-delay: 0.2s; font-family: 'Poppins', sans-serif; letter-spacing: -0.02em;">
+                    Predict the Unseen.<br />
+                    <span class="gradient-text">Protect Your Future.</span>
+                </h1>
+
+                <p class="text-xl md:text-2xl text-slate-300 mb-10 max-w-3xl mx-auto leading-relaxed fade-in-up"
+                    style="animation-delay: 0.3s; font-family: 'Inter', sans-serif;">
+                    A revolutionary AI defense system that identifies silent health risks before they become
+                    emergencies.
+                </p>
+
+                <div class="flex flex-col sm:flex-row gap-4 justify-center fade-in-up" style="animation-delay: 0.4s">
+                    <button onclick="showSignUp()"
+                        class="px-8 py-4 gradient-orange rounded-xl font-bold text-lg shadow-2xl shadow-primary/40 hover:shadow-primary/60 transition-all btn-glow">
+                        Get Started Free
+                    </button>
+                </div>
+
+                <div class="mt-12 text-sm text-slate-400 fade-in-up" style="animation-delay: 0.5s">
+                    Trusted by healthcare professionals worldwide
+                </div>
+            </div>
+        </section>
+
+        <!-- Stats Section -->
+        <section class="py-20 px-8 border-t border-white/5">
+            <div class="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-12">
+                <div class="text-center scroll-reveal">
+                    <div class="text-6xl font-black gradient-text mb-3 stat-number">98%</div>
+                    <div class="text-slate-400 text-sm uppercase tracking-wider font-semibold">Diagnostic Accuracy</div>
+                    <p class="text-slate-500 text-xs mt-2">Validated across 10,000+ cases</p>
+                </div>
+                <div class="text-center scroll-reveal" style="transition-delay: 0.1s">
+                    <div class="text-6xl font-black gradient-text mb-3 stat-number">3</div>
+                    <div class="text-slate-400 text-sm uppercase tracking-wider font-semibold">AI Agents Working
+                        Together</div>
+                    <p class="text-slate-500 text-xs mt-2">Adversarial validation system</p>
+                </div>
+                <div class="text-center scroll-reveal" style="transition-delay: 0.2s">
+                    <div class="text-6xl font-black gradient-text mb-3 stat-number">24/7</div>
+                    <div class="text-slate-400 text-sm uppercase tracking-wider font-semibold">Continuous Monitoring
+                    </div>
+                    <p class="text-slate-500 text-xs mt-2">Real-time health tracking</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Features Section -->
+        <section id="features" class="py-32 px-8">
+            <div class="max-w-7xl mx-auto">
+                <div class="text-center mb-20 scroll-reveal">
+                    <h2 class="text-5xl md:text-6xl font-black mb-6">Everything you need for<br /><span
+                            class="gradient-text">intelligent healthcare</span></h2>
+                    <p class="text-xl text-slate-400 max-w-3xl mx-auto">Comprehensive AI-powered platform designed for
+                        accuracy, transparency, and real-time insights.</p>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+                    <div class="glass-card rounded-2xl p-8 feature-card scroll-reveal" style="transition-delay: 0s">
+                        <div class="size-14 rounded-xl bg-gradient-to-br from-primary to-primary-dark flex items-center justify-center mb-6">
+                            <span class="material-symbols-rounded text-3xl text-white">health_metrics</span>
+                        </div>
+                        <h3 class="text-xl font-bold mb-3">Symptoms Analysis</h3>
+                        <p class="text-sm text-slate-400 leading-relaxed">Understand the 'Why.' Discover the specific data points that tipped the scale and map your path to recovery.</p>
+                    </div>
+
+                    <div class="glass-card rounded-2xl p-8 feature-card scroll-reveal" style="transition-delay: 0.1s">
+                        <div
+                            class="size-14 rounded-xl bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center mb-6">
+                            <span class="material-symbols-rounded text-3xl text-white">swords</span>
+                        </div>
+                        <h3 class="text-xl font-bold mb-3">Debatable AI</h3>
+                        <p class="text-sm text-slate-400 leading-relaxed">Are your symptoms framing the wrong disease? Let our Debatable AI cross-examine every variable to uncover truth.</p>
+                    </div>
+
+                    <div class="glass-card rounded-2xl p-8 feature-card scroll-reveal" style="transition-delay: 0.2s">
+                        <div class="size-14 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center mb-6">
+                            <span class="material-symbols-rounded text-3xl text-white">watch</span>
+                        </div>
+                        <h3 class="text-xl font-bold mb-3">Bio-Sync Hub</h3>
+                        <p class="text-sm text-slate-400 leading-relaxed">Is your watch in sync with your health? Link your wearable to provide real-time vital streams for continuous monitoring.</p>
+                    </div>
+
+                    <div class="glass-card rounded-2xl p-8 feature-card scroll-reveal" style="transition-delay: 0.3s">
+                        <div
+                            class="size-14 rounded-xl bg-neuro-green-500 bg-gradient-to-br from-green-500 to-green-600 flex items-center justify-center mb-6">
+                            <span class="material-symbols-rounded text-3xl text-white">vital_signs</span>
+                        </div>
+                        <h3 class="text-xl font-bold mb-3">Neural Bio-Sensor</h3>
+                        <p class="text-sm text-slate-400 leading-relaxed">What if you could catch a crisis before it even begins? Our sensor scans your biometric rhythm for flickers of risk.</p>
+                    </div>
+
+                    <div class="glass-card rounded-2xl p-8 feature-card scroll-reveal" style="transition-delay: 0.4s">
+                        <div
+                            class="size-14 rounded-xl bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center mb-6">
+                            <span class="material-symbols-rounded text-3xl text-white">coronavirus</span>
+                        </div>
+                        <h3 class="text-xl font-bold mb-3">Community Sentinel</h3>
+                        <p class="text-sm text-slate-400 leading-relaxed">Is a hidden threat moving through your neighborhood? Monitors local data to warn you before the next wave hits.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Product Showcase -->
+        <section id="product" class="py-32 px-8 bg-gradient-to-b from-transparent to-primary/5">
+            <div class="max-w-7xl mx-auto">
+                <div class="text-center mb-16 scroll-reveal">
+                    <h2 class="text-5xl md:text-6xl font-black mb-6">See Neuro-Vitals<br /><span
+                            class="gradient-text">in action</span></h2>
+                    <p class="text-xl text-slate-400 max-w-3xl mx-auto">Experience the power of AI-driven healthcare
+                        intelligence in real-time.</p>
+                </div>
+
+                <div class="glass-card rounded-3xl p-4 scroll-reveal">
+                    <!-- Laptop Mockup -->
+                    <div class="bg-gradient-to-br from-slate-900 to-slate-800 rounded-2xl overflow-hidden product-screen"
+                        style="min-height: 600px;">
+                        <!-- MacOS Style Header -->
+                        <div class="h-10 glass-card flex items-center justify-between px-4 border-b border-white/5">
+                            <div class="flex gap-2">
+                                <div class="w-3 h-3 rounded-full bg-red-500"></div>
+                                <div class="w-3 h-3 rounded-full bg-yellow-500"></div>
+                                <div class="w-3 h-3 rounded-full bg-green-500"></div>
+                            </div>
+                            <div class="text-xs text-slate-400 font-semibold">Neuro-Vitals Dashboard</div>
+                            <div class="w-16"></div>
+                        </div>
+
+                        <!-- Dashboard Content -->
+                        <div class="p-6 space-y-6">
+                            <!-- Top Stats Row -->
+                            <div class="grid grid-cols-4 gap-4">
+                                <div class="glass-card p-4 rounded-xl border border-white/5">
+                                    <div class="flex items-center justify-between mb-2">
+                                        <span class="text-xs text-slate-400">Total Patients</span>
+                                        <span class="material-symbols-rounded text-sm text-primary">group</span>
+                                    </div>
+                                    <div class="text-2xl font-bold">1,247</div>
+                                    <div class="text-xs text-green-400 mt-1">↑ 12.5%</div>
+                                </div>
+
+                                <div class="glass-card p-4 rounded-xl border border-white/5">
+                                    <div class="flex items-center justify-between mb-2">
+                                        <span class="text-xs text-slate-400">Active Cases</span>
+                                        <span
+                                            class="material-symbols-rounded text-sm text-accent-blue">trending_up</span>
+                                    </div>
+                                    <div class="text-2xl font-bold">342</div>
+                                    <div class="text-xs text-blue-400 mt-1">↑ 8.2%</div>
+                                </div>
+
+                                <div class="glass-card p-4 rounded-xl border border-white/5">
+                                    <div class="flex items-center justify-between mb-2">
+                                        <span class="text-xs text-slate-400">AI Accuracy</span>
+                                        <span
+                                            class="material-symbols-rounded text-sm text-green-500">check_circle</span>
+                                    </div>
+                                    <div class="text-2xl font-bold">98.4%</div>
+                                    <div class="text-xs text-green-400 mt-1">↑ 0.3%</div>
+                                </div>
+
+                                <div class="glass-card p-4 rounded-xl border border-white/5">
+                                    <div class="flex items-center justify-between mb-2">
+                                        <span class="text-xs text-slate-400">Alerts</span>
+                                        <span class="material-symbols-rounded text-sm text-red-500">notifications</span>
+                                    </div>
+                                    <div class="text-2xl font-bold">7</div>
+                                    <div class="text-xs text-yellow-400 mt-1">Urgent</div>
+                                </div>
+                            </div>
+
+                            <!-- Main Content Grid -->
+                            <div class="grid grid-cols-3 gap-4">
+                                <!-- Left Column - Charts -->
+                                <div class="col-span-2 space-y-4">
+                                    <!-- Health Trend Chart -->
+                                    <div class="glass-card p-5 rounded-xl border border-white/5">
+                                        <div class="flex items-center justify-between mb-4">
+                                            <h3 class="font-bold text-sm">Patient Health Trend</h3>
+                                            <select
+                                                class="glass-card border border-white/10 rounded-lg px-3 py-1.5 text-xs cursor-pointer focus:outline-none focus:border-primary transition-all"
+                                                style="backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); appearance: none; -webkit-appearance: none; background-image: url('data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 fill=%27none%27 viewBox=%270 0 24 24%27 stroke=%27%23ec5b13%27%3E%3Cpath stroke-linecap=%27round%27 stroke-linejoin=%27round%27 stroke-width=%272%27 d=%27M19 9l-7 7-7-7%27%3E%3C/path%3E%3C/svg%3E'); background-repeat: no-repeat; background-position: right 0.5rem center; background-size: 1em; padding-right: 2rem;">
+                                                <option class="bg-slate-900">Last 7 Days</option>
+                                                <option class="bg-slate-900">Last 30 Days</option>
+                                                <option class="bg-slate-900">Last 90 Days</option>
+                                            </select>
+                                        </div>
+                                        <!-- Simple Line Graph Visualization -->
+                                        <div class="relative h-32">
+                                            <svg viewBox="0 0 400 100" class="w-full h-full">
+                                                <!--Grid Lines -->
+                                                <line x1="0" y1="25" x2="400" y2="25" stroke="rgba(255,255,255,0.05)"
+                                                    stroke-width="1" />
+                                                <line x1="0" y1="50" x2="400" y2="50" stroke="rgba(255,255,255,0.05)"
+                                                    stroke-width="1" />
+                                                <line x1="0" y1="75" x2="400" y2="75" stroke="rgba(255,255,255,0.05)"
+                                                    stroke-width="1" />
+
+                                                <!-- Area Fill -->
+                                                <path
+                                                    d="M 0,80 L 50,70 L 100,65 L 150,55 L 200,60 L 250,45 L 300,40 L 350,35 L 400,30 L 400,100 L 0,100 Z"
+                                                    fill="url(#gradient)" opacity="0.3" />
+
+                                                <!-- Line -->
+                                                <path
+                                                    d="M 0,80 L 50,70 L 100,65 L 150,55 L 200,60 L 250,45 L 300,40 L 350,35 L 400,30"
+                                                    stroke="#ec5b13" stroke-width="2" fill="none" />
+
+                                                <!--Dots -->
+                                                <circle cx="0" cy="80" r="3" fill="#ec5b13" />
+                                                <circle cx="50" cy="70" r="3" fill="#ec5b13" />
+                                                <circle cx="100" cy="65" r="3" fill="#ec5b13" />
+                                                <circle cx="150" cy="55" r="3" fill="#ec5b13" />
+                                                <circle cx="200" cy="60" r="3" fill="#ec5b13" />
+                                                <circle cx="250" cy="45" r="3" fill="#ec5b13" />
+                                                <circle cx="300" cy="40" r="3" fill="#ec5b13" />
+                                                <circle cx="350" cy="35" r="3" fill="#ec5b13" />
+                                                <circle cx="400" cy="30" r="4" fill="#ec5b13" stroke="#ff8a3d"
+                                                    stroke-width="2" />
+
+                                                <defs>
+                                                    <linearGradient id="gradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                                                        <stop offset="0%" stop-color="#ec5b13" />
+                                                        <stop offset="100%" stop-color="#ec5b13" stop-opacity="0" />
+                                                    </linearGradient>
+                                                </defs>
+                                            </svg>
+                                            <div class="flex justify-between text-[9px] text-slate-500 mt-2">
+                                                <span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Recent Patients -->
+                                    <div class="glass-card p-5 rounded-xl border border-white/5">
+                                        <h3 class="font-bold text-sm mb-4">Recent Patients</h3>
+                                        <div class="space-y-3">
+                                            <div
+                                                class="flex items-center gap-3 p-2 rounded-lg hover:bg-white/5 transition-colors">
+                                                <div
+                                                    class="w-8 h-8 rounded-full bg-gradient-orange flex items-center justify-center text-xs font-bold">
+                                                    JD</div>
+                                                <div class="flex-1">
+                                                    <div class="text-xs font-semibold">John Doe</div>
+                                                    <div class="text-[10px] text-slate-400">Neurological Assessment
+                                                    </div>
+                                                </div>
+                                                <div
+                                                    class="px-2 py-1 rounded text-[9px] bg-green-500/20 text-green-400">
+                                                    Completed</div>
+                                            </div>
+                                            <div
+                                                class="flex items-center gap-3 p-2 rounded-lg hover:bg-white/5 transition-colors">
+                                                <div
+                                                    class="w-8 h-8 rounded-full bg-gradient-blue flex items-center justify-center text-xs font-bold">
+                                                    SM</div>
+                                                <div class="flex-1">
+                                                    <div class="text-xs font-semibold">Sarah Miller</div>
+                                                    <div class="text-[10px] text-slate-400">MRI Scan Analysis</div>
+                                                </div>
+                                                <div
+                                                    class="px-2 py-1 rounded text-[9px] bg-yellow-500/20 text-yellow-400">
+                                                    Pending</div>
+                                            </div>
+                                            <div
+                                                class="flex items-center gap-3 p-2 rounded-lg hover:bg-white/5 transition-colors">
+                                                <div
+                                                    class="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center text-xs font-bold">
+                                                    RJ</div>
+                                                <div class="flex-1">
+                                                    <div class="text-xs font-semibold">Robert Johnson</div>
+                                                    <div class="text-[10px] text-slate-400">AI Diagnosis Review</div>
+                                                </div>
+                                                <div class="px-2 py-1 rounded text-[9px] bg-blue-500/20 text-blue-400">
+                                                    In Progress</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Right Column - Activity & Stats -->
+                                <div class="space-y-4">
+                                    <!-- System Status -->
+                                    <div class="glass-card p-5 rounded-xl border border-white/5">
+                                        <h3 class="font-bold text-sm mb-4">System Status</h3>
+                                        <div class="space-y-3">
+                                            <div>
+                                                <div class="flex justify-between text-xs mb-1">
+                                                    <span class="text-slate-400">AI Processing</span>
+                                                    <span class="text-primary">92%</span>
+                                                </div>
+                                                <div class="h-1.5 bg-white/5 rounded-full overflow-hidden">
+                                                    <div class="h-full bg-gradient-orange" style="width: 92%"></div>
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <div class="flex justify-between text-xs mb-1">
+                                                    <span class="text-slate-400">Data Sync</span>
+                                                    <span class="text-accent-blue">78%</span>
+                                                </div>
+                                                <div class="h-1.5 bg-white/5 rounded-full overflow-hidden">
+                                                    <div class="h-full bg-gradient-blue" style="width: 78%"></div>
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <div class="flex justify-between text-xs mb-1">
+                                                    <span class="text-slate-400">Storage</span>
+                                                    <span class="text-green-400">65%</span>
+                                                </div>
+                                                <div class="h-1.5 bg-white/5 rounded-full overflow-hidden">
+                                                    <div class="h-full bg-gradient-to-r from-green-500 to-green-600"
+                                                        style="width: 65%"></div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Activity Feed -->
+                                    <div class="glass-card p-5 rounded-xl border border-white/5">
+                                        <h3 class="font-bold text-sm mb-4">Recent Activity</h3>
+                                        <div class="space-y-3">
+                                            <div class="flex gap-2">
+                                                <div class="w-1 h-1 rounded-full bg-primary mt-1.5"></div>
+                                                <div>
+                                                    <div class="text-[10px] text-slate-300">New diagnosis completed
+                                                    </div>
+                                                    <div class="text-[9px] text-slate-500">2 min ago</div>
+                                                </div>
+                                            </div>
+                                            <div class="flex gap-2">
+                                                <div class="w-1 h-1 rounded-full bg-blue-400 mt-1.5"></div>
+                                                <div>
+                                                    <div class="text-[10px] text-slate-300">Alert triggered</div>
+                                                    <div class="text-[9px] text-slate-500">15 min ago</div>
+                                                </div>
+                                            </div>
+                                            <div class="flex gap-2">
+                                                <div class="w-1 h-1 rounded-full bg-green-400 mt-1.5"></div>
+                                                <div>
+                                                    <div class="text-[10px] text-slate-300">System update</div>
+                                                    <div class="text-[9px] text-slate-500">1 hour ago</div>
+                                                </div>
+                                            </div>
+                                            <div class="flex gap-2">
+                                                <div class="w-1 h-1 rounded-full bg-yellow-400 mt-1.5"></div>
+                                                <div>
+                                                    <div class="text-[10px] text-slate-300">Data sync complete</div>
+                                                    <div class="text-[9px] text-slate-500">3 hours ago</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- How It Works -->
+        <section id="how-it-works" class="py-32 px-8">
+            <div class="max-w-6xl mx-auto">
+                <div class="text-center mb-20 scroll-reveal">
+                    <h2 class="text-5xl md:text-6xl font-black mb-6">How it works</h2>
+                    <p class="text-xl text-slate-400 max-w-3xl mx-auto">Our AI-powered platform delivers accurate
+                        diagnoses in three simple steps.</p>
+                </div>
+
+                <div class="space-y-24">
+                    <div class="flex flex-col md:flex-row items-center gap-12 scroll-reveal">
+                        <div class="flex-1">
+                            <div class="inline-flex items-center gap-2 mb-4">
+                                <div
+                                    class="size-10 rounded-full gradient-orange flex items-center justify-center font-bold text-white">
+                                    1</div>
+                                <span class="text-sm font-bold text-primary uppercase tracking-wider">Input
+                                    Symptoms</span>
+                            </div>
+                            <h3 class="text-4xl font-black mb-4">Enter patient data</h3>
+                            <p class="text-lg text-slate-400 leading-relaxed mb-6">Simply input patient symptoms,
+                                vitals, and medical history. Our AI analyzes the data instantly using advanced neural
+                                networks.</p>
+                            <ul class="space-y-3">
+                                <li class="flex items-center gap-3 text-slate-300">
+                                    <span class="material-symbols-rounded text-primary">check_circle</span>
+                                    Voice or text input supported
+                                </li>
+                                <li class="flex items-center gap-3 text-slate-300">
+                                    <span class="material-symbols-rounded text-primary">check_circle</span>
+                                    Automatic medical record integration
+                                </li>
+                                <li class="flex items-center gap-3 text-slate-300">
+                                    <span class="material-symbols-rounded text-primary">check_circle</span>
+                                    Real-time vital sign monitoring
+                                </li>
+                            </ul>
+                        </div>
+                        <div class="flex-1 glass-card rounded-2xl p-8 min-h-[300px] flex items-center justify-center">
+                            <div class="text-center">
+                                <span class="material-symbols-rounded text-primary"
+                                    style="font-size: 120px;">edit_note</span>
+                                <p class="text-sm text-slate-400 mt-4">Patient Data Entry</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex flex-col md:flex-row-reverse items-center gap-12 scroll-reveal">
+                        <div class="flex-1">
+                            <div class="inline-flex items-center gap-2 mb-4">
+                                <div
+                                    class="size-10 rounded-full gradient-orange flex items-center justify-center font-bold text-white">
+                                    2</div>
+                                <span class="text-sm font-bold text-primary uppercase tracking-wider">AI Analysis</span>
+                            </div>
+                            <h3 class="text-4xl font-black mb-4">Adversarial validation</h3>
+                            <p class="text-lg text-slate-400 leading-relaxed mb-6">Three AI agents debate the diagnosis.
+                                Prosecutor challenges, Defense defends, Judge decides. This ensures maximum accuracy.
+                            </p>
+                            <ul class="space-y-3">
+                                <li class="flex items-center gap-3 text-slate-300">
+                                    <span class="material-symbols-rounded text-red-400">gavel</span>
+                                    Prosecutor AI finds weaknesses
+                                </li>
+                                <li class="flex items-center gap-3 text-slate-300">
+                                    <span class="material-symbols-rounded text-blue-400">shield</span>
+                                    Defense AI validates evidence
+                                </li>
+                                <li class="flex items-center gap-3 text-slate-300">
+                                    <span class="material-symbols-rounded text-primary">balance</span>
+                                    Judge AI delivers final verdict
+                                </li>
+                            </ul>
+                        </div>
+                        <div class="flex-1 glass-card rounded-2xl p-8 min-h-[300px] flex items-center justify-center">
+                            <div class="text-center">
+                                <span class="material-symbols-rounded text-primary"
+                                    style="font-size: 120px;">psychology</span>
+                                <p class="text-sm text-slate-400 mt-4">AI Debate Arena</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex flex-col md:flex-row items-center gap-12 scroll-reveal">
+                        <div class="flex-1">
+                            <div class="inline-flex items-center gap-2 mb-4">
+                                <div
+                                    class="size-10 rounded-full gradient-orange flex items-center justify-center font-bold text-white">
+                                    3</div>
+                                <span class="text-sm font-bold text-primary uppercase tracking-wider">Get Results</span>
+                            </div>
+                            <h3 class="text-4xl font-black mb-4">Actionable insights</h3>
+                            <p class="text-lg text-slate-400 leading-relaxed mb-6">Receive detailed diagnosis with
+                                confidence scores, treatment recommendations, and 6-month health forecasts.</p>
+                            <ul class="space-y-3">
+                                <li class="flex items-center gap-3 text-slate-300">
+                                    <span class="material-symbols-rounded text-primary">check_circle</span>
+                                    Explainable AI reasoning
+                                </li>
+                                <li class="flex items-center gap-3 text-slate-300">
+                                    <span class="material-symbols-rounded text-primary">check_circle</span>
+                                    Treatment protocol suggestions
+                                </li>
+                                <li class="flex items-center gap-3 text-slate-300">
+                                    <span class="material-symbols-rounded text-primary">check_circle</span>
+                                    Predictive health trajectory
+                                </li>
+                            </ul>
+                        </div>
+                        <div class="flex-1 glass-card rounded-2xl p-8 min-h-[300px] flex items-center justify-center">
+                            <div class="text-center">
+                                <span class="material-symbols-rounded text-primary"
+                                    style="font-size: 120px;">insights</span>
+                                <p class="text-sm text-slate-400 mt-4">Diagnostic Report</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Testimonials -->
+        <section id="testimonials" class="py-32 px-8 bg-gradient-to-b from-primary/5 to-transparent">
+            <div class="max-w-7xl mx-auto">
+                <div class="text-center mb-20 scroll-reveal">
+                    <h2 class="text-5xl md:text-6xl font-black mb-6">Loved by healthcare<br /><span
+                            class="gradient-text">professionals worldwide</span></h2>
+                    <p class="text-xl text-slate-400 max-w-3xl mx-auto">See what doctors and researchers are saying
+                        about Neuro-Vitals.</p>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                    <div class="glass-card rounded-2xl p-8 testimonial-card scroll-reveal">
+                        <div class="flex items-center gap-4 mb-6">
+                            <div
+                                class="size-12 rounded-full bg-gradient-orange flex items-center justify-center text-white font-bold text-xl">
+                                DR
+                            </div>
+                            <div>
+                                <div class="font-bold">Dr. Sarah Chen</div>
+                                <div class="text-sm text-slate-400">Chief Neurosurgeon</div>
+                            </div>
+                        </div>
+                        <p class="text-slate-300 leading-relaxed">"The adversarial AI system caught a rare condition
+                            that we initially missed. It's like having three expert consultants available 24/7."</p>
+                        <div class="flex gap-1 mt-6">
+                            <span class="material-symbols-rounded text-yellow-500 text-xl">star</span>
+                            <span class="material-symbols-rounded text-yellow-500 text-xl">star</span>
+                            <span class="material-symbols-rounded text-yellow-500 text-xl">star</span>
+                            <span class="material-symbols-rounded text-yellow-500 text-xl">star</span>
+                            <span class="material-symbols-rounded text-yellow-500 text-xl">star</span>
+                        </div>
+                    </div>
+
+                    <div class="glass-card rounded-2xl p-8 testimonial-card scroll-reveal"
+                        style="transition-delay: 0.1s">
+                        <div class="flex items-center gap-4 mb-6">
+                            <div
+                                class="size-12 rounded-full bg-gradient-blue flex items-center justify-center text-white font-bold text-xl">
+                                MJ
+                            </div>
+                            <div>
+                                <div class="font-bold">Dr. Michael Johnson</div>
+                                <div class="text-sm text-slate-400">Medical Researcher</div>
+                            </div>
+                        </div>
+                        <p class="text-slate-300 leading-relaxed">"The predictive health trajectories have transformed
+                            how we approach preventive care. Absolutely revolutionary platform."</p>
+                        <div class="flex gap-1 mt-6">
+                            <span class="material-symbols-rounded text-yellow-500 text-xl">star</span>
+                            <span class="material-symbols-rounded text-yellow-500 text-xl">star</span>
+                            <span class="material-symbols-rounded text-yellow-500 text-xl">star</span>
+                            <span class="material-symbols-rounded text-yellow-500 text-xl">star</span>
+                            <span class="material-symbols-rounded text-yellow-500 text-xl">star</span>
+                        </div>
+                    </div>
+
+                    <div class="glass-card rounded-2xl p-8 testimonial-card scroll-reveal"
+                        style="transition-delay: 0.2s">
+                        <div class="flex items-center gap-4 mb-6">
+                            <div
+                                class="size-12 rounded-full bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center text-white font-bold text-xl">
+                                AP
+                            </div>
+                            <div>
+                                <div class="font-bold">Dr. Aisha Patel</div>
+                                <div class="text-sm text-slate-400">Hospital Director</div>
+                            </div>
+                        </div>
+                        <p class="text-slate-300 leading-relaxed">"We've reduced diagnostic errors by 40% since
+                            implementing Neuro-Vitals. The ROI has been incredible for patient outcomes."</p>
+                        <div class="flex gap-1 mt-6">
+                            <span class="material-symbols-rounded text-yellow-500 text-xl">star</span>
+                            <span class="material-symbols-rounded text-yellow-500 text-xl">star</span>
+                            <span class="material-symbols-rounded text-yellow-500 text-xl">star</span>
+                            <span class="material-symbols-rounded text-yellow-500 text-xl">star</span>
+                            <span class="material-symbols-rounded text-yellow-500 text-xl">star</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Final CTA -->
+        <section class="py-32 px-8">
+            <div class="max-w-4xl mx-auto text-center scroll-reveal">
+                <h2 class="text-6xl md:text-7xl font-black mb-8">Ready to transform<br /><span
+                        class="gradient-text">healthcare?</span></h2>
+                <p class="text-2xl text-slate-400 mb-12 max-w-2xl mx-auto">Join thousands of healthcare professionals
+                    using Neuro-Vitals to deliver better patient outcomes.</p>
+                <div class="flex flex-col sm:flex-row gap-4 justify-center">
+                    <button onclick="showSignUp()"
+                        class="px-10 py-5 gradient-orange rounded-xl font-bold text-xl shadow-2xl shadow-primary/40 hover:shadow-primary/60 transition-all btn-glow">
+                        Get Started Free
+                    </button>
+                    <button
+                        class="px-10 py-5 glass-card rounded-xl font-bold text-xl hover:bg-white/5 transition-all border border-white/10">
+                        Contact Sales
+                    </button>
+                </div>
+                <p class="text-sm text-slate-500 mt-8">No credit card required • Free 30-day trial • Cancel anytime</p>
+            </div>
+        </section>
+
+        <!-- Footer -->
+        <footer class="py-16 px-8 border-t border-white/5">
+            <div class="max-w-7xl mx-auto">
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-12 mb-12">
+                    <div class="col-span-1">
+                        <div class="flex items-center gap-3 mb-4">
+                            <div class="size-10 rounded-xl gradient-orange flex items-center justify-center">
+                                <span class="material-symbols-rounded text-white text-xl">neurology</span>
+                            </div>
+                            <div>
+                                <h3 class="font-bold">Neuro-Vitals</h3>
+                                <p class="text-[9px] uppercase tracking-wider text-primary">Medical AI</p>
+                            </div>
+                        </div>
+                        <p class="text-sm text-slate-400">AI-powered healthcare intelligence for better patient
+                            outcomes.</p>
+                    </div>
+
+                    <div>
+                        <h4 class="font-bold mb-4">Product</h4>
+                        <ul class="space-y-2 text-sm text-slate-400">
+                            <li><a href="#features" class="hover:text-white transition-colors">Features</a></li>
+                            <li><a href="pricing.html" class="hover:text-white transition-colors">Pricing</a></li>
+                            <li><a href="security.html" class="hover:text-white transition-colors">Security</a></li>
+                            <li><a href="api.html" class="hover:text-white transition-colors">API</a></li>
+                        </ul>
+                    </div>
+
+                    <div>
+                        <h4 class="font-bold mb-4">Company</h4>
+                        <ul class="space-y-2 text-sm text-slate-400">
+                            <li><a href="about.html" class="hover:text-white transition-colors">About</a></li>
+                            <li><a href="blog.html" class="hover:text-white transition-colors">Blog</a></li>
+                            <li><a href="careers.html" class="hover:text-white transition-colors">Careers</a></li>
+                            <li><a href="contact.html" class="hover:text-white transition-colors">Contact</a></li>
+                        </ul>
+                    </div>
+
+                    <div>
+                        <h4 class="font-bold mb-4">Legal</h4>
+                        <ul class="space-y-2 text-sm text-slate-400">
+                            <li><a href="privacy.html" class="hover:text-white transition-colors">Privacy</a></li>
+                            <li><a href="terms.html" class="hover:text-white transition-colors">Terms</a></li>
+                            <li><a href="hipaa.html" class="hover:text-white transition-colors">HIPAA Compliance</a>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="pt-8 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-4">
+                    <p class="text-sm text-slate-500">© 2024 Neuro-Vitals. All rights reserved.</p>
+                    <div class="flex gap-4">
+                        <a href="#" class="text-slate-500 hover:text-white transition-colors">
+                            <span class="material-symbols-rounded">language</span>
+                        </a>
+                        <a href="#" class="text-slate-500 hover:text-white transition-colors">
+                            <span class="material-symbols-rounded">mail</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Sign In Form -->
+    <div id="signInForm"
+        class="hidden page-section min-h-screen flex items-center justify-center px-8 pt-24 relative overflow-hidden">
+        <!-- Animated Background Particles -->
+        <div class="absolute inset-0 overflow-hidden">
+            <div class="auth-particle" style="left: 10%; animation-delay: 0s;"></div>
+            <div class="auth-particle" style="left: 20%; animation-delay: 2s;"></div>
+            <div class="auth-particle" style="left: 30%; animation-delay: 4s;"></div>
+            <div class="auth-particle" style="left: 40%; animation-delay: 1s;"></div>
+            <div class="auth-particle" style="left: 50%; animation-delay: 3s;"></div>
+            <div class="auth-particle" style="left: 60%; animation-delay: 5s;"></div>
+            <div class="auth-particle" style="left: 70%; animation-delay: 2.5s;"></div>
+            <div class="auth-particle" style="left: 80%; animation-delay: 4.5s;"></div>
+            <div class="auth-particle" style="left: 90%; animation-delay: 1.5s;"></div>
+        </div>
+
+        <div
+            class="max-w-md w-full glass-card rounded-3xl p-10 border border-white/10 relative z-10 auth-form-container">
+            <div class="text-center mb-10">
+                <div
+                    class="size-20 mx-auto mb-6 rounded-2xl gradient-orange flex items-center justify-center shadow-2xl shadow-primary/40 auth-icon-pulse">
+                    <span class="material-symbols-rounded text-4xl text-white">login</span>
+                </div>
+                <h2 class="text-4xl font-black mb-3 auth-slide-up" style="animation-delay: 0.1s;">Welcome Back</h2>
+                <p class="text-slate-400 text-lg auth-slide-up" style="animation-delay: 0.2s;">Sign in to your account
+                </p>
+            </div>
+            <form onsubmit="handleSignIn(event)" class="space-y-6">
+                <div class="auth-slide-up" style="animation-delay: 0.3s;">
+                    <label class="block text-sm font-medium text-slate-300 mb-2">Email Address</label>
+                    <input type="email" id="signInEmail" required placeholder="Enter your email"
+                        class="w-full bg-white/5 border-2 border-white/10 rounded-xl px-5 py-4 text-white placeholder:text-slate-500 focus:outline-none focus:border-primary focus:scale-[1.02] transition-all duration-300 auth-input" />
+                </div>
+                <div class="auth-slide-up" style="animation-delay: 0.4s;">
+                    <label class="block text-sm font-medium text-slate-300 mb-2">Password</label>
+                    <input type="password" id="signInPassword" required placeholder="Enter password"
+                        class="w-full bg-white/5 border-2 border-white/10 rounded-xl px-5 py-4 text-white placeholder:text-slate-500 focus:outline-none focus:border-primary focus:scale-[1.02] transition-all duration-300 auth-input" />
+                </div>
+                <div class="auth-slide-up" style="animation-delay: 0.5s;">
+                    <button type="submit"
+                        class="w-full py-4 gradient-orange text-white font-bold rounded-xl shadow-lg shadow-primary/30 hover:shadow-primary/50 hover:scale-[1.02] transition-all duration-300 auth-button">
+                        Sign In
+                    </button>
+                </div>
+            </form>
+            <div class="mt-8 text-center space-y-3 auth-slide-up" style="animation-delay: 0.6s;">
+                <button onclick="showSignUp()"
+                    class="text-primary hover:text-orange-500 transition-colors font-semibold">
+                    Don't have an account? <strong>Sign Up</strong>
+                </button>
+                <div class="pt-2">
+                    <button onclick="loginAsAdmin()" class="text-[10px] text-white/30 hover:text-primary transition-all uppercase tracking-widest font-bold border border-white/5 px-4 py-2 rounded-lg hover:border-primary/30 hover:bg-primary/5">
+                        Institutional Login (Admin)
+                    </button>
+                </div>
+                <br />
+                <button onclick="showLanding()"
+                    class="text-slate-500 hover:text-white transition-colors flex items-center gap-2 mx-auto">
+                    <span class="material-symbols-rounded">arrow_back</span>
+                    Back to Home
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sign Up Form -->
+    <div id="signUpForm"
+        class="hidden page-section min-h-screen flex items-center justify-center px-8 pt-24 relative overflow-hidden">
+        <!-- Animated Background Particles -->
+        <div class="absolute inset-0 overflow-hidden">
+            <div class="auth-particle" style="left: 15%; animation-delay: 0.5s;"></div>
+            <div class="auth-particle" style="left: 25%; animation-delay: 2.5s;"></div>
+            <div class="auth-particle" style="left: 35%; animation-delay: 4.5s;"></div>
+            <div class="auth-particle" style="left: 45%; animation-delay: 1.5s;"></div>
+            <div class="auth-particle" style="left: 55%; animation-delay: 3.5s;"></div>
+            <div class="auth-particle" style="left: 65%; animation-delay: 0.2s;"></div>
+            <div class="auth-particle" style="left: 75%; animation-delay: 3s;"></div>
+            <div class="auth-particle" style="left: 85%; animation-delay: 5s;"></div>
+        </div>
+
+        <div
+            class="max-w-md w-full glass-card rounded-3xl p-10 border border-white/10 relative z-10 auth-form-container">
+            <div class="text-center mb-10">
+                <div
+                    class="size-20 mx-auto mb-6 rounded-2xl gradient-orange flex items-center justify-center shadow-2xl shadow-primary/40 auth-icon-pulse">
+                    <span class="material-symbols-rounded text-4xl text-white">person_add</span>
+                </div>
+                <h2 class="text-4xl font-black mb-3 auth-slide-up" style="animation-delay: 0.1s;">Get Started</h2>
+                <p class="text-slate-400 text-lg auth-slide-up" style="animation-delay: 0.2s;">Create your free account
+                </p>
+            </div>
+            <form onsubmit="handleSignUp(event)" class="space-y-5">
+                <div class="auth-slide-up" style="animation-delay: 0.3s;">
+                    <label class="block text-sm font-medium text-slate-300 mb-2">Full Name</label>
+                    <input type="text" id="signUpName" required placeholder="Enter your full name"
+                        class="w-full bg-white/5 border-2 border-white/10 rounded-xl px-5 py-4 text-white placeholder:text-slate-500 focus:outline-none focus:border-primary focus:scale-[1.02] transition-all duration-300 auth-input" />
+                </div>
+                <div class="auth-slide-up" style="animation-delay: 0.4s;">
+                    <label class="block text-sm font-medium text-slate-300 mb-2">Email Address</label>
+                    <input type="email" id="signUpEmail" required placeholder="Enter your email"
+                        class="w-full bg-white/5 border-2 border-white/10 rounded-xl px-5 py-4 text-white placeholder:text-slate-500 focus:outline-none focus:border-primary focus:scale-[1.02] transition-all duration-300 auth-input" />
+                </div>
+                <div class="auth-slide-up" style="animation-delay: 0.5s;">
+                    <label class="block text-sm font-medium text-slate-300 mb-2">Password</label>
+                    <input type="password" id="signUpPassword" required placeholder="Create a password"
+                        class="w-full bg-white/5 border-2 border-white/10 rounded-xl px-5 py-4 text-white placeholder:text-slate-500 focus:outline-none focus:border-primary focus:scale-[1.02] transition-all duration-300 auth-input" />
+                </div>
+                <div class="auth-slide-up" style="animation-delay: 0.6s;">
+                    <button type="submit"
+                        class="w-full py-4 gradient-orange text-white font-bold rounded-xl shadow-lg shadow-primary/30 hover:shadow-primary/50 hover:scale-[1.02] transition-all duration-300 auth-button">
+                        Create Account
+                    </button>
+                </div>
+
+                <div class="auth-slide-up" style="animation-delay: 0.7s;">
+                    <div class="relative my-6">
+                        <div class="absolute inset-0 flex items-center">
+                            <div class="w-full border-t border-white/10"></div>
+                        </div>
+                        <div class="relative flex justify-center text-sm">
+                            <span class="px-4 bg-slate-900 text-slate-400">Or continue with</span>
+                        </div>
+                    </div>
+
+                    <button type="button" onclick="handleGoogleSignIn()"
+                        class="w-full py-4 bg-white hover:bg-gray-100 text-gray-900 font-semibold rounded-xl shadow-lg transition-all duration-300 flex items-center justify-center gap-3">
+                        <svg class="w-5 h-5" viewBox="0 0 24 24">
+                            <path fill="#4285F4"
+                                d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                            <path fill="#34A853"
+                                d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                            <path fill="#FBBC05"
+                                d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
+                            <path fill="#EA4335"
+                                d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
+                        </svg>
+                        Continue with Google
+                    </button>
+                </div>
+            </form>
+            <div class="mt-8 text-center space-y-3 auth-slide-up" style="animation-delay: 0.7s;">
+                <button onclick="showSignIn()"
+                    class="text-primary hover:text-orange-500 transition-colors font-semibold">
+                    Already have an account? <strong>Sign In</strong>
+                </button>
+                <br />
+                <button onclick="showLanding()"
+                    class="text-slate-500 hover:text-white transition-colors flex items-center gap-2 mx-auto">
+                    <span class="material-symbols-rounded">arrow_back</span>
+                    Back to Home
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Scroll Reveal Animation
+        function revealOnScroll() {
+            const elements = document.querySelectorAll('.scroll-reveal');
+            elements.forEach(el => {
+                const rect = el.getBoundingClientRect();
+                if (rect.top < window.innerHeight * 0.85) {
+                    el.classList.add('revealed');
+                }
+            });
+        }
+
+        window.addEventListener('scroll', revealOnScroll);
+        window.addEventListener('load', revealOnScroll);
+
+        // Navbar Scroll Effect
+        window.addEventListener('scroll', () => {
+            const navbar = document.getElementById('navbar');
+            if (window.scrollY > 50) {
+                navbar.classList.add('navbar-scrolled');
+            } else {
+                navbar.classList.remove('navbar-scrolled');
+            }
+        });
+
+        // Page Navigation
+        function loginAsAdmin() {
+            document.getElementById('signInEmail').value = 'admin';
+            document.getElementById('signInPassword').value = 'admin123';
+            handleSignIn({ preventDefault: () => {} });
+        }
+
+        // Helper function for custom table login
+        async function loginUser(email, password) {
+            console.log("Attempting custom table login...");
+            try {
+                const { data, error } = await window.supabaseClient
+                    .from('profiles')
+                    .select('*')
+                    .eq('email', email)
+                    .eq('password', password)
+                    .single();
+                return { data, error };
+            } catch (err) {
+                return { data: null, error: err };
+            }
+        }
+
+        // Helper function for custom table updates
+        async function upsertUserProfile(profileData) {
+            console.log("Upserting user profile...");
+            try {
+                const { data, error } = await window.supabaseClient
+                    .from('profiles')
+                    .upsert(profileData);
+                return { data, error };
+            } catch (err) {
+                return { data: null, error: err };
+            }
+        }
+
+        function showSignIn() {
+            document.getElementById('landingPage').classList.add('hidden');
+            document.getElementById('signUpForm').classList.add('hidden');
+            document.getElementById('signInForm').classList.remove('hidden');
+            window.scrollTo(0, 0);
+        }
+
+        function showSignUp() {
+            document.getElementById('landingPage').classList.add('hidden');
+            document.getElementById('signInForm').classList.add('hidden');
+            document.getElementById('signUpForm').classList.remove('hidden');
+            window.scrollTo(0, 0);
+        }
+
+        function showLanding() {
+            document.getElementById('signInForm').classList.add('hidden');
+            document.getElementById('signUpForm').classList.add('hidden');
+            document.getElementById('landingPage').classList.remove('hidden');
+            window.scrollTo(0, 0);
+        }
+
+        // Sign In Handler
+        async function handleSignIn(e) {
+            e.preventDefault();
+            const email = document.getElementById('signInEmail').value;
+            const password = document.getElementById('signInPassword').value;
+
+            // 0. Hardcoded Admin Login
+            if (email === 'admin' && password === 'admin123') {
+                localStorage.setItem('neurovitals_currentUser', JSON.stringify({ 
+                    id: 'admin-id', 
+                    email: 'admin', 
+                    full_name: 'System Administrator',
+                    role: 'admin'
+                }));
+                window.location.href = 'outbreak-admin.html';
+                return;
+            }
+
+            // 1. Try Custom Table-based Login (For existing/legacy credentials)
+            const { data: profile, error: profileErr } = await loginUser(email, password);
+
+            if (profile) {
+                // Reset location state for fresh session tracking
+                localStorage.removeItem('neurovitals_location');
+                localStorage.removeItem('current_admin_node_id');
+                localStorage.removeItem('last_symptom_analysis');
+                
+                localStorage.setItem('neurovitals_currentUser', JSON.stringify({ ...profile }));
+                window.location.href = 'dashboard.html';
+                return;
+            }
+
+            // 2. Fallback: Try Supabase Auth
+            const { data, error } = await window.supabaseClient.auth.signInWithPassword({
+                email: email,
+                password: password,
+            });
+
+            if (data.user) {
+                // Reset location state for fresh session tracking
+                localStorage.removeItem('neurovitals_location');
+                localStorage.removeItem('current_admin_node_id');
+                localStorage.removeItem('last_symptom_analysis');
+
+                // Fetch profile to merge
+                const { data: userProfile } = await window.supabaseClient
+                    .from('profiles')
+                    .select('*')
+                    .eq('email', data.user.email)
+                    .single();
+                
+                localStorage.setItem('neurovitals_currentUser', JSON.stringify({ ...data.user, ...userProfile }));
+                window.location.href = 'dashboard.html';
+            } else {
+                alert('Login Failed: ' + (profileErr ? 'Invalid credentials' : error.message));
+            }
+        }
+
+        // Sign Up Handler
+        async function handleSignUp(e) {
+            e.preventDefault();
+            const name = document.getElementById('signUpName').value;
+            const email = document.getElementById('signUpEmail').value;
+            const password = document.getElementById('signUpPassword').value;
+
+            // Handle Supabase Auth SignUp
+            const { data, error } = await window.supabaseClient.auth.signUp({
+                email: email,
+                password: password,
+                options: {
+                    data: {
+                        full_name: name,
+                    }
+                }
+            });
+
+            if (data.user || !error) {
+                // Reset location state for fresh session tracking
+                localStorage.removeItem('neurovitals_location');
+                localStorage.removeItem('current_admin_node_id');
+                localStorage.removeItem('last_symptom_analysis');
+
+                // Create profile entry with password for compatibility
+                await upsertUserProfile({
+                    id: data.user.id,
+                    email: email,
+                    full_name: name,
+                    password: password
+                });
+                
+                localStorage.setItem('neurovitals_currentUser', JSON.stringify({ 
+                    ...data.user, 
+                    full_name: name 
+                }));
+                window.location.href = 'dashboard.html';
+            } else {
+                alert('Error: ' + error.message);
+            }
+        }
+
+        // Sign Out Handler
+        function handleSignOut() {
+            // Full Clean for Vitals Security
+            localStorage.removeItem('neurovitals_currentUser');
+            localStorage.removeItem('neurovitals_location');
+            localStorage.removeItem('current_admin_node_id');
+            localStorage.removeItem('last_symptom_analysis');
+            localStorage.removeItem('wearable_connected');
+            localStorage.removeItem('gfit_live_data');
+            localStorage.removeItem('wearable_sheet_url');
+            
+            if (window.vitalsStreamer) {
+                window.vitalsStreamer.stop();
+            }
+
+            document.getElementById('signInBtn').style.display = 'inline-block';
+            document.getElementById('signUpBtn').style.display = 'inline-block';
+            document.getElementById('signOutBtn').style.display = 'none';
+            showLanding();
+        }
+
+        // Google Sign In Handler
+        function handleGoogleSignIn() {
+            alert('Google Sign-In will be integrated soon. For now, please use email/password signup.');
+        }
+
+        // Optimized Professional Neural Network Animation
+        const neuralCanvas = document.getElementById('neuralNetwork');
+        const nnCtx = neuralCanvas.getContext('2d');
+        let animationFrame;
+
+        function initCanvas() {
+            neuralCanvas.width = window.innerWidth;
+            neuralCanvas.height = window.innerHeight;
+        }
+        initCanvas();
+
+        // Configuration for professional look
+        const config = {
+            nodeCount: 60,
+            maxDistance: 200,
+            cursorRadius: 150,
+            nodeSpeed: 0.3,
+            baseNodeSize: 2,
+            baseLineWidth: 0.5,
+            baseOpacity: 0.5,
+            glowOpacity: 0.9
+        };
+
+        const nodes = [];
+        const mouse = { x: -1000, y: -1000 };
+
+        // Track mouse position efficiently
+        document.addEventListener('mousemove', (e) => {
+            mouse.x = e.clientX;
+            mouse.y = e.clientY;
+        }, { passive: true });
+
+        // Initialize nodes with even distribution
+        for (let i = 0; i < config.nodeCount; i++) {
+            nodes.push({
+                x: Math.random() * neuralCanvas.width,
+                y: Math.random() * neuralCanvas.height,
+                vx: (Math.random() - 0.5) * config.nodeSpeed,
+                vy: (Math.random() - 0.5) * config.nodeSpeed
+            });
+        }
+
+        function drawNode(node, distToMouse) {
+            const isNearMouse = distToMouse < config.cursorRadius;
+            const glowFactor = isNearMouse ? 1 - (distToMouse / config.cursorRadius) : 0;
+
+            // Calculate dynamic properties
+            const size = config.baseNodeSize + (glowFactor * 2);
+            const opacity = config.baseOpacity + (glowFactor * config.glowOpacity);
+
+            // Draw glow effect
+            if (glowFactor > 0.2) {
+                const glowGradient = nnCtx.createRadialGradient(
+                    node.x, node.y, 0,
+                    node.x, node.y, 15 * glowFactor
+                );
+                glowGradient.addColorStop(0, `rgba(236, 91, 19, ${0.4 * glowFactor})`);
+                glowGradient.addColorStop(1, 'rgba(236, 91, 19, 0)');
+                nnCtx.fillStyle = glowGradient;
+                nnCtx.beginPath();
+                nnCtx.arc(node.x, node.y, 15 * glowFactor, 0, Math.PI * 2);
+                nnCtx.fill();
+            }
+
+            // Draw node
+            nnCtx.beginPath();
+            nnCtx.arc(node.x, node.y, size, 0, Math.PI * 2);
+            nnCtx.fillStyle = `rgba(236, 91, 19, ${opacity})`;
+            nnCtx.fill();
+        }
+
+        function drawConnection(node1, node2, distance, mouseDistance) {
+            const distanceFactor = 1 - (distance / config.maxDistance);
+            const isNearMouse = mouseDistance < config.cursorRadius;
+            const glowFactor = isNearMouse ? 1 - (mouseDistance / config.cursorRadius) : 0;
+
+            const opacity = (config.baseOpacity * distanceFactor) + (glowFactor * 0.5);
+            const width = config.baseLineWidth + (glowFactor * 1.5);
+
+            nnCtx.beginPath();
+            nnCtx.strokeStyle = `rgba(236, 91, 19, ${opacity})`;
+            nnCtx.lineWidth = width;
+            nnCtx.moveTo(node1.x, node1.y);
+            nnCtx.lineTo(node2.x, node2.y);
+            nnCtx.stroke();
+        }
+
+        function updateNode(node) {
+            // Update position
+            node.x += node.vx;
+            node.y += node.vy;
+
+            // Bounce off edges
+            if (node.x <= 0 || node.x >= neuralCanvas.width) {
+                node.vx *= -1;
+                node.x = Math.max(0, Math.min(neuralCanvas.width, node.x));
+            }
+            if (node.y <= 0 || node.y >= neuralCanvas.height) {
+                node.vy *= -1;
+                node.y = Math.max(0, Math.min(neuralCanvas.height, node.y));
+            }
+        }
+
+        function animate() {
+            // Clear canvas
+            nnCtx.clearRect(0, 0, neuralCanvas.width, neuralCanvas.height);
+
+            // Update all nodes
+            nodes.forEach(updateNode);
+
+            // Draw connections first (behind nodes)
+            for (let i = 0; i < nodes.length; i++) {
+                for (let j = i + 1; j < nodes.length; j++) {
+                    const dx = nodes[i].x - nodes[j].x;
+                    const dy = nodes[i].y - nodes[j].y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+
+                    if (distance < config.maxDistance) {
+                        // Calculate distance from line midpoint to mouse
+                        const midX = (nodes[i].x + nodes[j].x) / 2;
+                        const midY = (nodes[i].y + nodes[j].y) / 2;
+                        const mouseDistX = mouse.x - midX;
+                        const mouseDistY = mouse.y - midY;
+                        const mouseDistance = Math.sqrt(mouseDistX * mouseDistX + mouseDistY * mouseDistY);
+
+                        drawConnection(nodes[i], nodes[j], distance, mouseDistance);
+                    }
+                }
+            }
+            nodes.forEach(node => {
+                const dx = mouse.x - node.x;
+                const dy = mouse.y - node.y;
+                const distToMouse = Math.sqrt(dx * dx + dy * dy);
+                drawNode(node, distToMouse);
+            });
+
+            animationFrame = requestAnimationFrame(animate);
+        }
+        animate();
+        let resizeTimeout;
+        window.addEventListener('resize', () => {
+            clearTimeout(resizeTimeout);
+            resizeTimeout = setTimeout(() => {
+                cancelAnimationFrame(animationFrame);
+                initCanvas();
+                animate();
+            }, 250);
+        });
+    </script>
+</body>
+
+</html>

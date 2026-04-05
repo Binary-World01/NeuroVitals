@@ -1195,7 +1195,8 @@
                             console.warn('Backend Sim Sync Error:', err);
                         });
                     } else {
-                        fetch('/api/save-vitals', {
+                        const apiBase = typeof getApiBase === 'function' ? getApiBase() : "https://neuro-vitals-api.onrender.com/api";
+                        fetch(`${apiBase}/save-vitals`, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify(vitalsPayload)

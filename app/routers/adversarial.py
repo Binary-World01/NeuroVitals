@@ -14,7 +14,7 @@ async def run_adversarial_debate(patient: PatientProfile):
     """Run adversarial diagnosis debate"""
     try:
         patient_dict = patient.dict()
-        result = adversarial_engine.run_debate(patient_dict)
+        result = await adversarial_engine.run_debate(patient_dict)
         
         return AdversarialDebateResult(
             prosecutor=result["prosecutor"],

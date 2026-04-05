@@ -1,0 +1,6 @@
+const SUPABASE_URL = "https://raboyinovwxdynswpoak.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJhYm95aW5vdnd4ZHluc3dwb2FrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE2NjA5NzIsImV4cCI6MjA4NzIzNjk3Mn0.bh3R2qcAFIwhbJ3BoBQXWv9NdlYeKBt7a25CCQYb50A";
+
+const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+window.supabaseClient = supabaseClient;

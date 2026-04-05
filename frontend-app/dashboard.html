@@ -1,0 +1,1279 @@
+<!DOCTYPE html>
+<html class="dark" lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>Neuro-Vitals | Dashboard</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@300;400;500;600;700;800;900&family=Poppins:wght@700;800;900&family=Inter:wght@400;500;600;700&display=swap"
+        rel="stylesheet" />
+
+    <!-- Icons -->
+    <link
+        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200"
+        rel="stylesheet" />
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- Supabase -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/supabase-config.js"></script>
+    <script src="js/vitals-streamer.js"></script>
+
+    <script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#ec5b13", // Original Orange
+                        "accent-blue": "#00d2ff", // Original Blue
+                        "background-dark": "#0a0604", // Original Dark BG
+                        "neuro-base": "#1e293b", // Card Placeholder
+                        "neuro-green": "#10b981",
+                        "neuro-orange": "#f97316",
+                        "neuro-red": "#ef4444",
+                    },
+                    fontFamily: {
+                        "sans": ["Public Sans", "sans-serif"],
+                        "display": ["Poppins", "sans-serif"]
+                    },
+                    boxShadow: {
+                        "glow": "0 0 20px rgba(236, 91, 19, 0.4)", // Orange Glow
+                        "emergency": "0 0 30px rgba(239, 68, 68, 0.4)"
+                    }
+                }
+            }
+        };
+    </script>
+    <style>
+        body {
+            font-family: 'Public Sans', sans-serif;
+            background-color: #0a0604;
+            background-image: radial-gradient(circle at top right, #2d1b15, #0a0604, #0a0604);
+            color: #f8fafc;
+        }
+
+        /* Glassmorphism - Matching Theme */
+        .bento-card {
+            background: rgba(255, 255, 255, 0.03);
+            /* Lighter glass for contrast on dark bg */
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s ease, border-color 0.2s ease;
+        }
+
+        .bento-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.5);
+            border-color: rgba(236, 91, 19, 0.3);
+            /* Orange border on hover */
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #0a0604;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: linear-gradient(180deg, #ec5b13 0%, #ff8a3d 100%);
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: linear-gradient(180deg, #ff6b2b 0%, #ffaa5d 100%);
+        }
+
+        /* Animations */
+        @keyframes pulse-slow {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.7;
+            }
+        }
+
+        .animate-pulse-slow {
+            animation: pulse-slow 3s infinite;
+        }
+
+        /* Profile Dropdown */
+        .profile-dropdown {
+            position: absolute;
+            top: 100%;
+            right: 0;
+            margin-top: 0.5rem;
+            min-width: 200px;
+            background: rgba(10, 6, 4, 0.95);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 1rem;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+            z-index: 50;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(-10px);
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .profile-dropdown.active {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+        }
+
+        .gradient-text {
+            background: linear-gradient(135deg, #ffffff 0%, #ec5b13 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+    </style>
+</head>
+
+<body class="antialiased min-h-screen flex flex-col md:flex-row overflow-hidden">
+
+    <!-- --- LOCATION AUTHORIZATION MODAL --- -->
+    <div id="locationOverlay" class="fixed inset-0 z-[100] bg-black/80 backdrop-blur-xl flex items-center justify-center p-4 transition-all duration-500 opacity-0 pointer-events-none">
+        <div class="glass-card max-w-md w-full rounded-[2.5rem] p-10 border border-primary/20 shadow-[0_0_50px_rgba(236,91,19,0.1)] text-center relative overflow-hidden">
+            <!-- Animated Background Glow -->
+            <div class="absolute -top-24 -right-24 w-48 h-48 bg-primary/10 blur-[60px] rounded-full animate-pulse"></div>
+            
+            <div class="w-20 h-20 rounded-3xl bg-primary/10 flex items-center justify-center text-primary mx-auto mb-8 shadow-inner border border-primary/20">
+                <span class="material-symbols-rounded text-4xl">location_on</span>
+            </div>
+            
+            <h2 class="text-2xl font-black text-white uppercase tracking-tighter mb-4">Security Clearance Required</h2>
+            <p class="text-slate-400 text-sm leading-relaxed mb-8">
+                To enable **Outbreak Intelligence** and secure your local community coordinates, we require a one-time location authorization.
+            </p>
+            
+            <div class="space-y-4">
+                <button id="authorizeLocationBtn"
+                    class="w-full py-4 bg-primary text-white font-black uppercase tracking-widest rounded-2xl hover:scale-[1.02] active:scale-[0.98] transition-all shadow-[0_10px_30px_rgba(236,91,19,0.3)]">
+                    Authorize Neural Mapping
+                </button>
+                <p class="text-[10px] text-white/30 uppercase font-bold tracking-widest">Encrypted • Anonymous • Secure</p>
+            </div>
+        </div>
+    </div>
+    <!-- Mobile Sidebar Toggle -->
+    <div class="md:hidden p-4 flex justify-between items-center border-b border-white/5 bg-background-dark z-50">
+        <div class="flex items-center gap-2">
+            <span class="material-symbols-rounded text-primary">neurology</span>
+            <span class="font-bold text-lg">Neuro-Vitals</span>
+        </div>
+        <button onclick="document.getElementById('sidebar').classList.toggle('-translate-x-full')" class="text-white">
+            <span class="material-symbols-rounded">menu</span>
+        </button>
+    </div>
+
+    <!-- Sidebar -->
+    <aside id="sidebar"
+        class="fixed inset-y-0 left-0 transform -translate-x-full md:relative md:translate-x-0 w-64 md:w-24 lg:w-64 bg-background-dark/95 border-r border-white/5 z-40 transition-transform duration-300 flex flex-col pt-16 md:pt-0">
+        <div class="p-6 flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center text-primary shadow-glow">
+                <span class="material-symbols-rounded">neurology</span>
+            </div>
+            <span class="font-bold text-xl md:hidden lg:block tracking-tight">Neuro-Vitals</span>
+        </div>
+
+        <nav class="flex-1 px-3 space-y-1">
+            <a href="dashboard.html"
+                class="flex items-center gap-3 px-3 py-3 rounded-xl bg-primary/10 text-primary border border-primary/20 font-bold transition-all shadow-[0_0_15px_rgba(236,91,19,0.1)]" title="Main Dashboard Overview">
+                <span class="material-symbols-rounded">grid_view</span>
+                <span class="md:hidden lg:block text-sm">Dashboard</span>
+            </a>
+            <a href="symptom-analysis.html"
+                class="flex items-center gap-3 px-3 py-3 rounded-xl text-slate-400 hover:bg-white/5 hover:text-white transition-colors" title="Symptoms Analysis: Analyze Symptoms">
+                <span class="material-symbols-rounded">health_metrics</span>
+                <span class="md:hidden lg:block text-sm font-medium">Symptoms Analysis</span>
+            </a>
+            <a href="adversarial-diagnosis.html"
+                class="flex items-center gap-3 px-3 py-3 rounded-xl text-slate-400 hover:bg-white/5 hover:text-white transition-colors" title="Debatable AI: Challenge Diagnosis">
+                <span class="material-symbols-rounded">swords</span>
+                <span class="md:hidden lg:block text-sm font-medium">Debatable AI</span>
+            </a>
+            <a href="integrations.html"
+                class="flex items-center gap-3 px-3 py-3 rounded-xl text-slate-400 hover:bg-white/5 hover:text-white transition-colors" title="Neural Bio-Sensor: Connect Wearables">
+                <span class="material-symbols-rounded">vital_signs</span>
+                <span class="md:hidden lg:block text-sm font-medium">Neural Bio-Sensor</span>
+            </a>
+            <a href="outbreak-map.html"
+                class="flex items-center gap-3 px-3 py-3 rounded-xl text-slate-400 hover:bg-white/5 hover:text-white transition-colors" title="Community Health: Outbreak Map">
+                <span class="material-symbols-rounded">groups</span>
+                <span class="md:hidden lg:block text-sm font-medium">Community</span>
+            </a>
+            <a href="risk-engine.html"
+                class="flex items-center gap-3 px-3 py-3 rounded-xl text-slate-400 hover:bg-white/5 hover:text-white transition-colors" title="Neuro-Forecast: AI Risk Prediction">
+                <span class="material-symbols-rounded">psychology</span>
+                <span class="md:hidden lg:block text-sm font-medium">Neuro-Forecast</span>
+            </a>
+        </nav>
+
+    </aside>
+
+    <!-- Main Content -->
+    <main class="flex-1 h-screen overflow-y-auto relative">
+        <!-- Floating Header -->
+        <header
+            class="sticky top-0 z-30 bg-background-dark/80 backdrop-blur-md border-b border-white/5 px-6 py-4 flex items-center justify-between">
+            <div>
+                <h2 class="text-xl font-bold" id="headerGreeting">Good Evening, Patient</h2>
+                <div class="flex items-center gap-2 mt-1">
+                    <span class="relative flex h-2 w-2">
+                        <span
+                            class="animate-ping absolute inline-flex h-full w-full rounded-full bg-neuro-green opacity-75"></span>
+                        <span class="relative inline-flex rounded-full h-2 w-2 bg-neuro-green"></span>
+                    </span>
+                    <p class="text-xs text-neuro-green font-medium tracking-wide uppercase">System Status: Stable</p>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-4">
+                <button onclick="toggleNotifications()"
+                    class="w-10 h-10 rounded-full bento-card flex items-center justify-center text-slate-400 hover:text-white relative hover:bg-white/5">
+                    <span class="material-symbols-rounded">notifications</span>
+                    <span
+                        class="absolute top-2 right-2 w-2 h-2 bg-primary rounded-full border-2 border-background-dark"></span>
+                </button>
+
+                <!-- Profile Dropdown -->
+                <div class="relative">
+                    <button onclick="toggleProfileDropdown()"
+                        class="flex items-center gap-3 bento-card pl-2 pr-4 py-1.5 rounded-full cursor-pointer hover:border-primary/40 transition-colors">
+                        <div
+                            class="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-orange-600 flex items-center justify-center text-white font-bold text-sm shadow-lg">
+                            P
+                        </div>
+                        <span class="hidden md:block text-sm font-medium" id="headerUserName">Patient</span>
+                        <span class="material-symbols-rounded text-slate-400 text-sm">expand_more</span>
+                    </button>
+
+                    <div id="profileDropdown" class="profile-dropdown">
+                        <div class="p-4 border-b border-white/5">
+                            <p class="text-sm font-bold text-white" id="dropdownName">Patient</p>
+                            <p class="text-xs text-slate-400" id="dropdownEmail">patient@example.com</p>
+                        </div>
+                        <div class="p-2 space-y-1">
+                            <a href="#" onclick="openProfile()"
+                                class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-white/5 text-sm text-slate-300 hover:text-white transition-colors">
+                                <span class="material-symbols-rounded text-base">person</span> My Profile
+                            </a>
+                            <a href="#" onclick="openSettings()"
+                                class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-white/5 text-sm text-slate-300 hover:text-white transition-colors">
+                                <span class="material-symbols-rounded text-base">settings</span> Settings
+                            </a>
+                        </div>
+                        <div class="p-2 border-t border-white/5">
+                            <button onclick="handleSignOut()"
+                                class="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-neuro-red/10 text-sm text-neuro-red font-medium transition-colors text-left">
+                                <span class="material-symbols-rounded text-base">logout</span> Sign Out
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Dashboard Content Grid (The Bento Grid) -->
+        <div class="p-6 max-w-[1600px] mx-auto space-y-6">
+
+            <!-- Section 1 & 2: Vitals Anchor & Trend Monitor -->
+            <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
+
+                <!-- Neuro Score (Hero Widget - Large) -->
+                <div
+                    onclick="window.location.href='integrations.html'"
+                    class="bento-card rounded-3xl p-6 md:col-span-1 lg:col-span-1 flex flex-col justify-between relative overflow-hidden group cursor-pointer">
+                    <div class="absolute inset-0 bg-gradient-to-b from-primary/10 to-transparent"></div>
+                    <div class="z-10">
+                        <h3 class="text-slate-400 text-sm font-medium uppercase tracking-wider mb-1">Daily Neuro
+                            Resilience</h3>
+                        <p class="text-xs text-slate-500">Based on Sleep & HRV</p>
+                    </div>
+
+                    <div class="relative flex items-center justify-center py-6 z-10">
+                        <!-- Custom CSS Circular Progress -->
+                        <svg class="w-40 h-40 transform -rotate-90">
+                            <circle cx="80" cy="80" r="70" stroke="#2d1b15" stroke-width="12" fill="transparent">
+                            </circle>
+                            <circle id="resiliencePulse" cx="80" cy="80" r="70" stroke="#ec5b13" stroke-width="12" fill="transparent"
+                                stroke-dasharray="440" stroke-dashoffset="440" stroke-linecap="round"
+                                class="transition-all duration-1000"></circle>
+                        </svg>
+                        <div class="absolute flex flex-col items-center">
+                            <span class="text-4xl font-bold text-white" id="dashResilienceVal">0</span>
+                            <span
+                                class="text-xs font-bold text-slate-500 bg-white/5 px-2 py-0.5 rounded-full mt-1 border border-white/10 uppercase tracking-tighter">Initializing</span>
+                        </div>
+                    </div>
+
+                    <div class="mt-4 flex justify-between text-xs text-slate-400 z-10">
+                        <span>Yesterday: —</span>
+                        <span class="text-slate-500 font-medium tracking-tighter uppercase">Initializing Stream</span>
+                    </div>
+                </div>
+
+                <!-- Live Vitals & Trends (Middle & Right Columns) -->
+                <div class="md:col-span-2 lg:col-span-3 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+
+                    <!-- Live Heart Rate -->
+                    <div onclick="window.location.href='integrations.html'" class="bento-card rounded-3xl p-5 flex flex-col justify-between cursor-pointer">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <h4 class="text-sm text-slate-400 font-medium">Heart Rate</h4>
+                                <div class="flex items-baseline gap-2 mt-1">
+                                    <span class="text-2xl font-bold text-white" id="dashHR">0</span>
+                                    <span class="text-xs text-slate-400">BPM</span>
+                                </div>
+                            </div>
+                            <span
+                                class="w-8 h-8 rounded-full bg-neuro-red/10 flex items-center justify-center text-neuro-red border border-neuro-red/20 shadow-[0_0_10px_rgba(239,68,68,0.2)]">
+                                <span class="material-symbols-rounded text-sm">favorite</span>
+                            </span>
+                        </div>
+                        <p class="text-[10px] text-neuro-red/80 font-bold uppercase tracking-widest mt-1 animate-pulse">Click here to sync</p>
+                        <div class="mt-4 h-12 w-full">
+                            <!-- Simulated Graph -->
+                            <canvas id="chartHeartRate"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- HRV (Stress) -->
+                    <div onclick="window.location.href='integrations.html'" class="bento-card rounded-3xl p-5 flex flex-col justify-between cursor-pointer">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <h4 class="text-sm text-slate-400 font-medium">HRV (Stress)</h4>
+                                <div class="flex items-baseline gap-2 mt-1">
+                                    <span class="text-2xl font-bold text-white" id="dashHRV">0</span>
+                                    <span class="text-xs text-slate-400">ms</span>
+                                </div>
+                                <span class="text-xs text-slate-500 mt-1 inline-block uppercase tracking-tighter">Awaiting Sync</span>
+                            </div>
+                            <span
+                                class="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary border border-primary/20 shadow-[0_0_10px_rgba(236,91,19,0.2)]">
+                                <span class="material-symbols-rounded text-sm">water_drop</span>
+                            </span>
+                        </div>
+                        <div class="mt-4 h-12 w-full">
+                            <canvas id="chartHRV"></canvas>
+                        </div>
+                    </div>
+
+
+                    <!-- Sleep Analysis -->
+                    <div onclick="window.location.href='integrations.html'" class="bento-card rounded-3xl p-6 md:col-span-2 lg:col-span-2 relative cursor-pointer">
+                        <div class="flex justify-between items-center mb-4">
+                            <div>
+                                <h4 class="text-sm font-bold text-slate-300">Sleep Analysis</h4>
+                                <p class="text-xs text-slate-500 mt-0.5 uppercase tracking-tighter" id="dashSleepLabel">Wearable Sync Required</p>
+                            </div>
+                            <span class="px-2 py-1 bg-white/5 rounded-lg text-xs font-medium text-slate-400">Last
+                                Night</span>
+                        </div>
+                        <div class="h-40 w-full">
+                            <canvas id="chartSleep"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Stress Gauge (Small widget) -->
+                    <div onclick="window.location.href='integrations.html'" class="bento-card rounded-3xl p-6 flex flex-col items-center justify-center cursor-pointer">
+                        <h4 class="text-sm text-slate-400 font-medium mb-2">Anxiety Level</h4>
+                        <div class="relative w-32 h-16 overflow-hidden">
+                            <!-- Simple CSS Arc simulation -->
+                            <svg viewBox="0 0 100 50" class="w-full h-full">
+                                <path d="M10 50 A 40 40 0 0 1 90 50" fill="none" stroke="#2d1b15" stroke-width="10"
+                                    stroke-linecap="round" />
+                                <path id="anxietyArc" d="M10 50 A 40 40 0 0 1 10 50" fill="none" stroke="#ec5b13" stroke-width="10"
+                                    stroke-linecap="round" />
+                            </svg>
+                            <div class="absolute bottom-0 left-1/2 transform -translate-x-1/2 text-center">
+                                <span class="text-xl font-bold text-slate-500" id="dashAnxietyLevel">—</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Steps (PROMOTED) -->
+                    <div onclick="window.location.href='integrations.html'" class="bento-card rounded-3xl p-5 flex items-center gap-4 cursor-pointer">
+                        <div class="w-10 h-10 rounded-xl bg-neuro-green/10 flex items-center justify-center text-neuro-green border border-neuro-green/20">
+                            <span class="material-symbols-rounded text-sm">directions_walk</span>
+                        </div>
+                        <div>
+                            <p class="text-xs text-slate-400 font-medium">Steps Today</p>
+                            <p class="text-xl font-bold text-white" id="dashSteps">0</p>
+                        </div>
+                    </div>
+
+                    <!-- Calories (PROMOTED) -->
+                    <div onclick="window.location.href='integrations.html'" class="bento-card rounded-3xl p-5 flex items-center gap-4 cursor-pointer">
+                        <div class="w-10 h-10 rounded-xl bg-orange-500/10 flex items-center justify-center text-orange-400 border border-orange-500/20">
+                            <span class="material-symbols-rounded text-sm">local_fire_department</span>
+                        </div>
+                        <div>
+                            <p class="text-xs text-slate-400 font-medium">Active Calories</p>
+                            <p class="text-xl font-bold text-white" id="dashCalories">0</p>
+                        </div>
+                    </div>
+
+                    <!-- Total Sleep (PROMOTED) -->
+                    <div onclick="window.location.href='integrations.html'" class="bento-card rounded-3xl p-5 flex items-center gap-4 cursor-pointer">
+                        <div class="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center text-purple-400 border border-purple-500/20">
+                            <span class="material-symbols-rounded text-sm">bedtime</span>
+                        </div>
+                        <div>
+                            <p class="text-xs text-slate-400 font-medium">Sleep (Total)</p>
+                            <p class="text-xl font-bold text-white" id="dashSleepTotal">0</p>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+
+            <!-- Health Arsenal: 5 Impactful Features -->
+            <section class="mt-4">
+                <div class="flex items-center justify-between mb-4">
+                    <div>
+                        <h3 class="text-lg font-bold gradient-text">Health Arsenal Blueprint</h3>
+                        <p class="text-[10px] text-slate-400 uppercase tracking-tighter">Strategic tools for proactive wellness management</p>
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <!-- Feature 1: Symptoms Analysis -->
+                    <div class="bento-card rounded-2xl p-5 flex flex-col justify-between group hover:bg-primary/5 border-primary/5">
+                        <div>
+                            <div class="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary mb-3 group-hover:scale-110 transition-transform">
+                                <span class="material-symbols-rounded text-xl">health_metrics</span>
+                            </div>
+                            <h4 class="text-xs font-bold text-white mb-1.5">Symptoms Analysis</h4>
+                            <p class="text-[11px] text-slate-400 leading-relaxed mb-4">Analyze your symptoms with our AI-powered engine to understand potential risks and recovery paths.</p>
+                        </div>
+                        <a href="symptom-analysis.html" class="w-full py-2 rounded-lg bg-white/5 hover:bg-primary text-white text-[10px] font-bold transition-all text-center border border-white/10 hover:border-primary">ANALYZE SYMPTOMS</a>
+                    </div>
+                    
+                    <!-- Feature 2: Debatable AI -->
+                    <div class="bento-card rounded-2xl p-5 flex flex-col justify-between group hover:bg-primary/5 border-primary/5">
+                        <div>
+                            <div class="w-10 h-10 rounded-xl bg-orange-500/10 flex items-center justify-center text-orange-500 mb-3 group-hover:scale-110 transition-transform">
+                                <span class="material-symbols-rounded text-xl">swords</span>
+                            </div>
+                            <h4 class="text-xs font-bold text-white mb-1.5">Debatable AI</h4>
+                            <p class="text-[11px] text-slate-400 leading-relaxed mb-4">Challenge your diagnosis with our adversarial AI engine to uncover hidden truth and edge cases.</p>
+                        </div>
+                        <a href="adversarial-diagnosis.html" class="w-full py-2 rounded-lg bg-white/5 hover:bg-primary text-white text-[10px] font-bold transition-all text-center border border-white/10 hover:border-primary">CHALLENGE LOGIC</a>
+                    </div>
+
+                    <!-- Feature 3: Neural Bio-Sensor -->
+                    <div class="bento-card rounded-2xl p-5 flex flex-col justify-between group hover:bg-primary/5 border-primary/5">
+                        <div>
+                            <div class="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center text-blue-400 mb-3 group-hover:scale-110 transition-transform">
+                                <span class="material-symbols-rounded text-xl">vital_signs</span>
+                            </div>
+                            <h4 class="text-xs font-bold text-white mb-1.5">Neural Bio-Sensor</h4>
+                            <p class="text-[11px] text-slate-400 leading-relaxed mb-4">Is your watch in sync with your health? Integrate your wearable to provide real-time vital streams for monitoring.</p>
+                        </div>
+                        <a href="integrations.html" class="w-full py-2 rounded-lg bg-white/5 hover:bg-primary text-white text-[10px] font-bold transition-all text-center border border-white/10 hover:border-primary">SYNC WEARABLE</a>
+                    </div>
+
+                    <!-- Feature 4: Community -->
+                    <div class="bento-card rounded-2xl p-5 flex flex-col justify-between group hover:bg-primary/5 border-primary/5">
+                        <div>
+                            <div class="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center text-purple-400 mb-3 group-hover:scale-110 transition-transform">
+                                <span class="material-symbols-rounded text-xl">groups</span>
+                            </div>
+                            <h4 class="text-xs font-bold text-white mb-1.5">Community</h4>
+                            <p class="text-[11px] text-slate-400 leading-relaxed mb-4">Monitor local health trends and outbreak maps to stay informed and protected from neighborhood threats.</p>
+                        </div>
+                        <a href="community-health.html" class="w-full py-2 rounded-lg bg-white/5 hover:bg-primary text-white text-[10px] font-bold transition-all text-center border border-white/10 hover:border-primary">SCAN MAP</a>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Utility & Emergency Row -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- Quick Check-in -->
+                <div class="bento-card rounded-3xl p-6 flex flex-col justify-between">
+                    <h4 class="text-sm font-bold text-slate-300 mb-4">How are you feeling?</h4>
+                    <div class="flex justify-between gap-2">
+                        <button onclick="setMood('happy')"
+                            class="mood-btn flex-1 py-3 rounded-2xl bg-white/5 hover:bg-white/10 text-2xl transition-all hover:scale-110 border border-transparent hover:border-white/10">😃</button>
+                        <button onclick="setMood('neutral')"
+                            class="mood-btn flex-1 py-3 rounded-2xl bg-white/5 hover:bg-white/10 text-2xl transition-all hover:scale-110 border border-transparent hover:border-white/10">😐</button>
+                        <button onclick="setMood('sad')"
+                            class="mood-btn flex-1 py-3 rounded-2xl bg-white/5 hover:bg-white/10 text-2xl transition-all hover:scale-110 border border-transparent hover:border-white/10">😫</button>
+                    </div>
+                </div>
+
+                <!-- Medication Tracker -->
+                <div class="bento-card rounded-3xl p-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h4 class="text-sm font-bold text-slate-300">Medication</h4>
+                        <span
+                            class="text-xs text-primary bg-primary/10 px-2 py-0.5 rounded-full border border-primary/20">Next dose: 2:00 PM</span>
+                    </div>
+                    <div
+                        class="med-container flex items-center gap-4 bg-white/5 p-3 rounded-2xl border border-white/5 hover:border-white/10 transition-colors">
+                        <div
+                            class="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-orange-600 flex items-center justify-center text-white shadow-lg shadow-primary/20">
+                            <span class="material-symbols-rounded">pill</span>
+                        </div>
+                        <div class="flex-1">
+                            <p class="med-name text-sm font-bold text-white">Keppra</p>
+                            <p class="text-xs text-slate-400">500mg</p>
+                        </div>
+                        <label class="flex items-center cursor-pointer">
+                            <input type="checkbox" onclick="toggleMedication(this)"
+                                class="w-5 h-5 rounded border-slate-600 text-primary focus:ring-primary bg-transparent">
+                            <span class="sr-only">Take Now</span>
+                        </label>
+                    </div>
+                    <button onclick="openMedSchedule()"
+                        class="w-full mt-3 text-xs text-slate-400 hover:text-white transition-colors">See full schedule</button>
+                </div>
+
+                <!-- Emergency SOS (Now integrated into the grid) -->
+                <div class="bento-card rounded-3xl p-6 border border-neuro-red/30 bg-neuro-red/5 flex flex-col justify-between">
+                    <div class="flex items-center gap-4">
+                        <div class="w-12 h-12 rounded-full bg-neuro-red/20 flex items-center justify-center text-neuro-red animate-pulse-slow">
+                            <span class="material-symbols-rounded text-2xl">sos</span>
+                        </div>
+                        <div>
+                            <h4 class="text-sm font-bold text-white">Emergency Protocol</h4>
+                            <p class="text-[10px] text-slate-400">Instantly alert your doctor & contacts.</p>
+                        </div>
+                    </div>
+                    <button onclick="triggerSOS()"
+                        class="bg-neuro-red hover:bg-red-600 text-white w-full py-3 rounded-xl text-xs font-bold shadow-emergency transition-all hover:scale-105 active:scale-95 mt-4">
+                        ACTIVATE SOS
+                    </button>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <script>
+        // --- 1. User Data Initialization ---
+        window.addEventListener('DOMContentLoaded', async () => {
+            const { data: { user } } = await window.supabaseClient.auth.getUser();
+            if (!user) {
+                const localUser = JSON.parse(localStorage.getItem('neurovitals_currentUser') || '{}');
+                if (!localUser.email) {
+                    window.location.href = 'index.html';
+                    return;
+                }
+            }
+
+            const activeUser = user || JSON.parse(localStorage.getItem('neurovitals_currentUser'));
+            const email = activeUser.email;
+
+            // Fetch profile by email
+            const { data: profile } = await window.supabaseClient
+                .from('profiles')
+                .select('*')
+                .eq('email', email)
+                .single();
+
+            const name = profile?.name || activeUser.user_metadata?.full_name || email.split('@')[0];
+            const greeting = getGreeting() + ', ' + name;
+
+            document.getElementById('headerGreeting').innerText = greeting;
+            document.getElementById('headerUserName').innerText = name;
+            document.getElementById('dropdownName').innerText = name;
+            if (email) document.getElementById('dropdownEmail').innerText = email;
+
+            // Initialize Charts
+            initCharts();
+            
+            // Load Vitals from Supabase by UID
+            loadSupabaseVitals();
+            loadEmergencyContacts(email);
+            
+            // ── Google Fit Live Data Reader ──
+            loadGfitData();
+            setInterval(loadGfitData, 2000); // Faster refresh for live feel (checked every 2s)
+
+            // Real-time Event Listener for instant updates
+            window.addEventListener('vitalsUpdated', (e) => {
+                updateDashboardWithData(e.detail);
+            });
+        });
+
+        // New Helper to update UI specifically from streamer data
+        function updateDashboardWithData(d) {
+            if (!d) return;
+            
+            // 1. Heart Rate
+            const hr = document.getElementById('dashHR');
+            if (hr && d.heartRate) {
+                hr.textContent = d.heartRate;
+                markActive('dashHR');
+            }
+
+            // 2. HRV (Stress) - Derive locally for immediate feedback
+            const hrvVal = Math.max(20, Math.min(100, 150 - (d.heartRate || 72) - (Math.random() * 10)));
+            const hrv = document.getElementById('dashHRV');
+            if (hrv) {
+                hrv.textContent = Math.round(hrvVal);
+                const label = hrv.closest('.bento-card').querySelector('.tracking-tighter');
+                if (label) {
+                    label.textContent = hrvVal > 50 ? 'Low Stress' : 'Elevated Stress';
+                    label.className = `text-xs mt-1 inline-block uppercase tracking-tighter ${hrvVal > 50 ? 'text-neuro-green' : 'text-neuro-orange'}`;
+                }
+                markActive('dashHRV');
+            }
+
+            // 3. Neuro Resilience
+            const sleepScore = Math.min(40, (parseFloat(d.sleepHours || 0) / 8) * 40);
+            const hrvScore = (hrvVal / 100) * 40;
+            const stepScore = Math.min(20, (parseInt(d.steps || 0) / 10000) * 20);
+            const totalResilience = Math.round(sleepScore + hrvScore + stepScore);
+            
+            const resVal = document.getElementById('dashResilienceVal');
+            if (resVal) {
+                resVal.textContent = totalResilience;
+                const pulse = document.getElementById('resiliencePulse');
+                if (pulse) {
+                    const offset = 440 - (440 * totalResilience / 100);
+                    pulse.style.strokeDashoffset = offset;
+                }
+                const statusLabel = resVal.nextElementSibling;
+                if (statusLabel) {
+                    statusLabel.textContent = totalResilience > 70 ? 'Optimal' : totalResilience > 40 ? 'Stable' : 'Vulnerable';
+                    statusLabel.className = `text-xs font-bold bg-white/5 px-2 py-0.5 rounded-full mt-1 border border-white/10 uppercase tracking-tighter ${totalResilience > 70 ? 'text-neuro-green' : 'text-neuro-orange'}`;
+                }
+            }
+
+            // 4. Anxiety Level
+            const anxiety = document.getElementById('dashAnxietyLevel');
+            if (anxiety) {
+                const level = hrvVal > 60 ? 'Low' : hrvVal > 40 ? 'Medium' : 'High';
+                anxiety.textContent = level;
+                anxiety.className = `text-xl font-bold ${level === 'Low' ? 'text-neuro-green' : level === 'Medium' ? 'text-neuro-orange' : 'text-neuro-red'}`;
+                const arc = document.getElementById('anxietyArc');
+                if (arc) {
+                    const score = level === 'Low' ? 20 : level === 'Medium' ? 50 : 85;
+                    const arcLength = 126;
+                    arc.style.strokeDasharray = `${(score / 100) * arcLength} ${arcLength}`;
+                }
+            }
+
+            // 5. Steps & Calories
+            const steps = document.getElementById('dashSteps');
+            if (steps) steps.textContent = d.steps != null ? d.steps.toLocaleString() : '0';
+
+            const cal = document.getElementById('dashCalories');
+            if (cal) cal.textContent = d.calories != null ? `${Math.round(d.calories)} kcal` : '0';
+
+            const sleepT = document.getElementById('dashSleepTotal');
+            if (sleepT) sleepT.textContent = d.sleepHours != null ? `${d.sleepHours}h` : '0';
+
+            // 6. Sync Footer
+            const updated = document.getElementById('dashLastUpdated');
+            if (updated && d.updatedAt) {
+                const t = new Date(d.updatedAt);
+                updated.textContent = `Live Refresh: ${t.toLocaleTimeString()}`;
+            }
+        }
+
+        async function loadSupabaseVitals() {
+            const currentUser = JSON.parse(localStorage.getItem('neurovitals_currentUser') || '{}');
+            const userEmail = currentUser.email || localStorage.getItem('gfit_email');
+
+            if (!userEmail) {
+                clearVitalsUI();
+                return;
+            }
+
+            try {
+                const { data: vitals, error } = await window.supabaseClient
+                    .from('user_vitals')
+                    .select('*')
+                    .eq('user_email', userEmail)
+                    .order('recorded_at', { ascending: false })
+                    .limit(1);
+
+                if (vitals && vitals.length > 0) {
+                    const latest = vitals[0];
+                    const d = {
+                        heartRate: latest.heart_rate,
+                        steps: latest.steps,
+                        sleepHours: latest.sleep_hours,
+                        calories: latest.calories,
+                        updatedAt: latest.recorded_at
+                    };
+                    localStorage.setItem('gfit_live_data', JSON.stringify(d));
+                    updateDashboardWithData(d);
+                } else if (!localStorage.getItem('gfit_live_data')) {
+                    // Only clear if we don't currently have an active live stream
+                    clearVitalsUI();
+                }
+            } catch (err) {
+                console.error("Error loading vitals from Supabase:", err);
+                clearVitalsUI();
+            }
+        }
+
+        async function loadGfitData() {
+            // Bypassed wearable connection check to always fetch historical/backend vitals
+
+            try {
+                // 1. Try local storage first (for live feel)
+                const raw = localStorage.getItem('gfit_live_data');
+                let d = raw ? JSON.parse(raw) : null;
+
+                // 2. Try backend sync if local is missing or stale ( > 1 min )
+                const isFresh = d && (new Date() - new Date(d.updatedAt)) < 300000; // 5 mins tolerance
+                
+                if (!isFresh) {
+                    const currentUser = JSON.parse(localStorage.getItem('neurovitals_currentUser') || '{}');
+                    const userEmail = currentUser.email || localStorage.getItem('gfit_email');
+                    
+                    if (userEmail) {
+                        try {
+                            const apiBase = typeof getApiBase === 'function' ? getApiBase() : "https://neuro-vitals-api.onrender.com/api";
+                            const res = await fetch(`${apiBase}/vitals/get-vitals/${encodeURIComponent(userEmail)}`);
+                            const result = await res.json();
+                            if (result.status === 'success' && result.data && result.data.length > 0) {
+                                // Find latest record
+                                const latest = result.data.sort((a,b) => new Date(b.recorded_at) - new Date(a.recorded_at))[0];
+                                d = {
+                                    heartRate: latest.heart_rate,
+                                    steps: latest.steps,
+                                    sleepHours: latest.sleep_hours,
+                                    calories: latest.calories,
+                                    updatedAt: latest.recorded_at
+                                };
+                                // Update local for next time
+                                localStorage.setItem('gfit_live_data', JSON.stringify(d));
+                            }
+                        } catch (e) { console.warn("Backend vitals fetch failed", e); }
+                    }
+                }
+
+                // 3. Fallback/Stale Check
+                if (!d) {
+                    // Try to recover any data at all if completely empty
+                    const backup = localStorage.getItem('gfit_live_data');
+                    if (backup) d = JSON.parse(backup);
+                }
+
+                if (!d) {
+                    console.warn("[Dashboard] No data available for UI.");
+                    clearVitalsUI();
+                    return;
+                }
+
+                // 1. Heart Rate (Stale limit removed, we want to see historical data)
+
+
+                // 1. Heart Rate
+                const hr = document.getElementById('dashHR');
+                if (hr && d.heartRate) {
+                    hr.textContent = d.heartRate;
+                    markActive('dashHR');
+                }
+
+                // 2. Derive HRV (ms) - Stress Indicator
+                const hrvVal = Math.max(20, Math.min(100, 150 - (d.heartRate || 72) - (Math.random() * 10)));
+                const hrv = document.getElementById('dashHRV');
+                if (hrv) {
+                    hrv.textContent = Math.round(hrvVal);
+                    const label = hrv.closest('.bento-card').querySelector('.tracking-tighter');
+                    if (label) {
+                        label.textContent = hrvVal > 50 ? 'Low Stress' : 'Elevated Stress';
+                        label.className = `text-xs mt-1 inline-block uppercase tracking-tighter ${hrvVal > 50 ? 'text-neuro-green' : 'text-neuro-orange'}`;
+                    }
+                    markActive('dashHRV');
+                }
+
+
+                // 4. Calculate Neuro Resilience (0-100)
+                const sleepScore = Math.min(40, (parseFloat(d.sleepHours || 0) / 8) * 40);
+                const hrvScore = (hrvVal / 100) * 40;
+                const stepScore = Math.min(20, (parseInt(d.steps || 0) / 10000) * 20);
+                const totalResilience = Math.round(sleepScore + hrvScore + stepScore);
+                
+                const resVal = document.getElementById('dashResilienceVal');
+                if (resVal) {
+                    resVal.textContent = totalResilience;
+                    const pulse = document.getElementById('resiliencePulse');
+                    if (pulse) {
+                        const offset = 440 - (440 * totalResilience / 100);
+                        pulse.style.strokeDashoffset = offset;
+                    }
+                    const statusLabel = resVal.nextElementSibling;
+                    if (statusLabel) {
+                        statusLabel.textContent = totalResilience > 70 ? 'Optimal' : totalResilience > 40 ? 'Stable' : 'Vulnerable';
+                        statusLabel.className = `text-xs font-bold bg-white/5 px-2 py-0.5 rounded-full mt-1 border border-white/10 uppercase tracking-tighter ${totalResilience > 70 ? 'text-neuro-green' : 'text-neuro-orange'}`;
+                    }
+                }
+
+                // 5. Anxiety Level Gauge
+                const anxiety = document.getElementById('dashAnxietyLevel');
+                if (anxiety) {
+                    const level = hrvVal > 60 ? 'Low' : hrvVal > 40 ? 'Medium' : 'High';
+                    anxiety.textContent = level;
+                    anxiety.className = `text-xl font-bold ${level === 'Low' ? 'text-neuro-green' : level === 'Medium' ? 'text-neuro-orange' : 'text-neuro-red'}`;
+                    
+                    const arc = document.getElementById('anxietyArc');
+                    if (arc) {
+                        const score = level === 'Low' ? 20 : level === 'Medium' ? 50 : 85;
+                        const arcLength = 126; // Roughly half circumference of r=40
+                        arc.style.strokeDasharray = `${(score / 100) * arcLength} ${arcLength}`;
+                    }
+                }
+ Riverside
+                // 6. Base Stats
+                const steps = document.getElementById('dashSteps');
+                if (steps) steps.textContent = d.steps != null ? d.steps.toLocaleString() : '—';
+
+                const cal = document.getElementById('dashCalories');
+                if (cal) cal.textContent = d.calories != null ? `${d.calories} kcal` : '—';
+
+                const sleepT = document.getElementById('dashSleepTotal');
+                if (sleepT) sleepT.textContent = d.sleepHours != null ? `${d.sleepHours}h` : '—';
+
+                const sleepLabel = document.getElementById('dashSleepLabel');
+                if (sleepLabel && d.sleepHours) {
+                    const h = parseFloat(d.sleepHours);
+                    const quality = h >= 7 ? 'Optimal' : h >= 5 ? 'Moderate' : 'Low';
+                    sleepLabel.textContent = `${d.sleepHours}h total sleep last night (${quality})`;
+                    sleepLabel.className = `text-xs mt-0.5 uppercase tracking-tighter ${h >= 7 ? 'text-neuro-green' : 'text-neuro-orange'}`;
+                }
+
+                // 7. Sync Footer
+                const updated = document.getElementById('dashLastUpdated');
+                if (updated && d.updatedAt) {
+                    const t = new Date(d.updatedAt);
+                    updated.textContent = `Live Refresh: ${t.toLocaleTimeString()}`;
+                }
+
+            } catch (e) { console.error("Load Error:", e); }
+        }
+
+        function clearVitalsUI() {
+            // Reset numerical values
+            const ids = ['dashHR', 'dashHRV', 'dashOxygen', 'dashSteps', 'dashCalories', 'dashSleepTotal', 'dashResilienceVal'];
+            ids.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.textContent = '0';
+            });
+
+            const anxiety = document.getElementById('dashAnxietyLevel');
+            if (anxiety) {
+                anxiety.textContent = '—';
+                anxiety.className = 'text-xl font-bold text-slate-500';
+            }
+
+            // Reset bars and pulses
+            const o2Bar = document.getElementById('dashOxygenBar');
+            if (o2Bar) o2Bar.style.width = '0%';
+
+            const pulse = document.getElementById('resiliencePulse');
+            if (pulse) pulse.style.strokeDashoffset = '440';
+
+            // Reset labels
+            const sleepLabel = document.getElementById('dashSleepLabel');
+            if (sleepLabel) {
+                sleepLabel.textContent = 'Wearable Sync Required';
+                sleepLabel.className = 'text-xs text-slate-500 mt-0.5 uppercase tracking-tighter';
+            }
+
+            // Hide live indicators
+            document.querySelectorAll('.live-indicator').forEach(el => el.remove());
+
+            // Update status labels
+            const resStatus = document.getElementById('dashResilienceVal')?.nextElementSibling;
+            if (resStatus) {
+                resStatus.textContent = 'Unavailable';
+                resStatus.className = 'text-xs font-bold text-slate-500 bg-white/5 px-2 py-0.5 rounded-full mt-1 border border-white/10 uppercase tracking-tighter';
+            }
+
+            // Hide Gfit Row if no data
+            const row = document.getElementById('gfitDashRow');
+            if (row) row.classList.add('hidden');
+        }
+
+        function markActive(id) {
+            const el = document.getElementById(id);
+            if (!el) return;
+            const card = el.closest('.bento-card');
+            if (!card || card.querySelector('.live-indicator')) return;
+
+            const indicator = document.createElement('div');
+            indicator.className = 'live-indicator absolute top-3 right-3 flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-neuro-green/10 border border-neuro-green/20 pointer-events-none';
+            indicator.innerHTML = `
+                <span class="relative flex h-1.5 w-1.5">
+                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-neuro-green opacity-75"></span>
+                    <span class="relative inline-flex rounded-full h-1.5 w-1.5 bg-neuro-green"></span>
+                </span>
+                <span class="text-[9px] font-bold text-neuro-green tracking-tighter uppercase">Live</span>
+            `;
+            card.style.position = 'relative';
+            card.appendChild(indicator);
+        }
+
+        function getGreeting() {
+            const hour = new Date().getHours();
+            if (hour < 12) return 'Good Morning';
+            if (hour < 18) return 'Good Afternoon';
+            return 'Good Evening';
+        }
+
+        // --- 2. Chart Configurations (Chart.js) ---
+        function initCharts() {
+            // Common Config
+            Chart.defaults.color = '#94a3b8';
+            Chart.defaults.font.family = 'Public Sans';
+
+            // Heart Rate Sparkline
+            new Chart(document.getElementById('chartHeartRate'), {
+                type: 'line',
+                data: {
+                    labels: ['10:00', '10:05', '10:10', '10:15', '10:20', '10:25'],
+                    datasets: [{
+                        data: [0, 0, 0, 0, 0, 0],
+                        borderColor: '#ef4444',
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        tension: 0.4,
+                        fill: {
+                            target: 'origin',
+                            above: 'rgba(239, 68, 68, 0.1)'
+                        }
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: { x: { display: false }, y: { display: false, min: 50, max: 100 } }
+                }
+            });
+
+            // HRV Sparkline (Orange Theme)
+            new Chart(document.getElementById('chartHRV'), {
+                type: 'line',
+                data: {
+                    labels: ['M', 'T', 'W', 'T', 'F', 'S'],
+                    datasets: [{
+                        data: [0, 0, 0, 0, 0, 0],
+                        borderColor: '#ec5b13',
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        tension: 0.4,
+                        fill: {
+                            target: 'origin',
+                            above: 'rgba(236, 91, 19, 0.1)'
+                        }
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: { x: { display: false }, y: { display: false } }
+                }
+            });
+
+            // Sleep Analysis Bar Chart (Theme Colors)
+            new Chart(document.getElementById('chartSleep'), {
+                type: 'bar',
+                data: {
+                    labels: ['Deep', 'Light', 'REM', 'Awake'],
+                    datasets: [{
+                        label: 'Hours',
+                        data: [0, 0, 0, 0],
+                        backgroundColor: [
+                            '#ec5b13', // Deep - Primary Orange
+                            '#00d2ff', // Light - Accent Blue
+                            '#10b981', // REM - Green (Good)
+                            '#64748b'  // Awake - Slate
+                        ],
+                        borderRadius: 6,
+                        barThickness: 24
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { grid: { display: false }, ticks: { color: '#94a3b8' } },
+                        y: { display: false }
+                    }
+                }
+            });
+        }
+
+        // --- 3. UI Interactions ---
+        function toggleProfileDropdown() {
+            const dropdown = document.getElementById('profileDropdown');
+            dropdown.classList.toggle('active');
+        }
+
+        // Close dropdown when clicking outside
+        document.addEventListener('click', function (event) {
+            const dropdown = document.getElementById('profileDropdown');
+            const toggle = event.target.closest('button[onclick="toggleProfileDropdown()"]');
+
+            if (!toggle && !dropdown.contains(event.target)) {
+                dropdown.classList.remove('active');
+            }
+        });
+
+        function handleSignOut() {
+            if (confirm('Log out of Neuro-Vitals?')) {
+                localStorage.removeItem('neurovitals_currentUser');
+                window.location.href = 'index.html';
+            }
+        }
+
+        // --- 4. New Button Functionality ---
+
+        // Toast Notification System
+        function showToast(message, type = 'success') {
+            // Create toast container if it doesn't exist
+            let container = document.getElementById('toast-container');
+            if (!container) {
+                container = document.createElement('div');
+                container.id = 'toast-container';
+                container.style.cssText = 'position: fixed; bottom: 20px; right: 20px; z-index: 100; display: flex; flex-direction: column; gap: 10px;';
+                document.body.appendChild(container);
+            }
+
+            // Create toast element
+            const toast = document.createElement('div');
+            const bgColor = type === 'error' ? 'bg-red-500' : (type === 'warning' ? 'bg-orange-500' : 'bg-green-500');
+            toast.className = `${bgColor} text-white px-6 py-3 rounded-xl shadow-lg transform transition-all duration-300 translate-y-10 opacity-0 flex items-center gap-3`;
+            toast.innerHTML = `
+                <span class="material-symbols-rounded text-xl">${type === 'success' ? 'check_circle' : (type === 'error' ? 'error' : 'info')}</span>
+                <span class="font-medium text-sm">${message}</span>
+            `;
+
+            container.appendChild(toast);
+
+            // Animate in
+            requestAnimationFrame(() => {
+                toast.classList.remove('translate-y-10', 'opacity-0');
+            });
+
+            // Remove after 3 seconds
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-y-10');
+                setTimeout(() => {
+                    toast.remove();
+                }, 300);
+            }, 3000);
+        }
+
+        // Notifications Button
+        function toggleNotifications() {
+            showToast('No new notifications', 'info');
+        }
+
+        // --- DATABASE LOGGING HELPER (SINGLETON) ---
+        async function logDashboardEvent(table, payload) {
+            if (!window.supabaseClient) return;
+            
+            const userStr = localStorage.getItem('neurovitals_currentUser');
+            let email = "anonymous@system.local";
+            if (userStr) {
+                const user = JSON.parse(userStr);
+                if (user.email) email = user.email;
+            }
+
+            try {
+                if (table === 'emergency_contacts') {
+                    // Emergency contacts require a form_id mapping instead of email
+                    const { data: formMatch } = await window.supabaseClient
+                        .from('medical_forms')
+                        .select('formid')
+                        .eq('user_email', email)
+                        .limit(1);
+                    
+                    if (formMatch && formMatch.length > 0) {
+                        payload.form_id = formMatch[0].formid;
+                        
+                        const { data: existSOS } = await window.supabaseClient.from('emergency_contacts').select('form_id').eq('form_id', payload.form_id).limit(1);
+                        if(existSOS && existSOS.length > 0) {
+                            await window.supabaseClient.from(table).update(payload).eq('form_id', payload.form_id);
+                        } else {
+                            await window.supabaseClient.from(table).insert([payload]);
+                        }
+                    } else {
+                        console.warn("Medical Profile required to log Emergency SOS directly to database.");
+                    }
+                    return;
+                }
+
+                // Standard email singleton payload
+                payload.user_email = email;
+                
+                const { data: existing } = await window.supabaseClient
+                    .from(table)
+                    .select('id')
+                    .eq('user_email', email)
+                    .limit(1);
+
+                if (existing && existing.length > 0) {
+                    await window.supabaseClient.from(table).update(payload).eq('user_email', email);
+                } else {
+                    await window.supabaseClient.from(table).insert([payload]);
+                }
+            } catch (err) {
+                console.warn("Singleton Sync Error:", err);
+            }
+        }
+
+        // Mood Tracker
+        let currentMood = null;
+        function setMood(mood) {
+            currentMood = mood;
+            const buttons = document.querySelectorAll('.mood-btn');
+            buttons.forEach(btn => {
+                btn.classList.remove('bg-white/20', 'border-white/20');
+                btn.classList.add('bg-white/5', 'border-transparent');
+            });
+
+            // Highlight selected
+            const selectedBtn = event.currentTarget;
+            selectedBtn.classList.remove('bg-white/5', 'border-transparent');
+            selectedBtn.classList.add('bg-white/20', 'border-white/20');
+
+            const moodText = mood === 'happy' ? 'Great! Keep it up!' : (mood === 'neutral' ? 'Stay steady.' : 'Hang in there.');
+            showToast(`Mood recorded: ${moodText}`);
+            
+            logDashboardEvent('records', {
+                symptoms: `Routine Mood Logging: ${mood.toUpperCase()}`,
+                severity: mood === 'happy' ? '0' : (mood === 'neutral' ? '3' : '6'),
+                duration: "1 day"
+            });
+        }
+
+        // Medication Checkbox
+        function toggleMedication(checkbox) {
+            const container = checkbox.closest('.med-container');
+            const text = container.querySelector('.med-name');
+
+            if (checkbox.checked) {
+                text.classList.add('line-through', 'text-slate-500');
+                showToast('Medication marked as taken');
+                
+                logDashboardEvent('records', {
+                    symptoms: `Medication Administered: ${text.innerText.trim()}`,
+                    severity: '0',
+                    ai_response: 'User confirmed medication compliance routine.'
+                });
+            } else {
+                text.classList.remove('line-through', 'text-slate-500');
+            }
+        }
+
+        // Action Buttons (Placeholders)
+        function openSettings() {
+            showToast('Settings panel opening...', 'info');
+        }
+
+        function openProfile() {
+            showToast('Loading profile...', 'info');
+        }
+
+        function openMedSchedule() {
+            showToast('Opening medication schedule...', 'info');
+        }
+
+        // SOS Button
+        function triggerSOS() {
+            if (confirm('SAFEGUARD ACTIVE: Are you sure you want to trigger the Emergency Protocol? This will alert Dr. Sharma and your emergency contact (Sister).')) {
+                showToast('Emergency Alert Sent! Help is on the way.', 'error');
+                
+                // Track emergency event in database securely
+                logDashboardEvent('emergency_contacts', {
+                    contact_name: "** SOS PROTOCOL TRIGGERED **",
+                    relationship: "SYSTEM_ALERT",
+                    e_phonenumber: "000-000-0000"
+                });
+
+                // Simulate API call
+                setTimeout(() => {
+                    let lat = 18.5204;
+                    let lng = 73.8567;
+                    try {
+                        const loc = JSON.parse(localStorage.getItem('neurovitals_location'));
+                        if (loc && loc.latitude) { lat = loc.latitude; lng = loc.longitude; }
+                    } catch(e){}
+                    alert(`Emergency Contacts Notified via SMS and Email.\nLocation Shared: ${lat}° N, ${lng}° E`);
+                }, 1000);
+            }
+        }
+        // --- SECURE LOCATION AUTHORIZATION FLOW ---
+        const locationOverlay = document.getElementById('locationOverlay');
+        const authorizeBtn = document.getElementById('authorizeLocationBtn');
+
+        async function checkLocationAuth() {
+            // Only show if location is missing and user is logged in
+            if (!localStorage.getItem('neurovitals_location')) {
+                locationOverlay.classList.remove('opacity-0', 'pointer-events-none');
+                locationOverlay.classList.add('opacity-100');
+            }
+        }
+
+        authorizeBtn.addEventListener('click', async () => {
+            authorizeBtn.disabled = true;
+            authorizeBtn.innerHTML = `<span class="material-symbols-rounded animate-spin">refresh</span> Capturing...`;
+            
+            try {
+                if (typeof captureAndSaveLocation === 'function') {
+                    const loc = await captureAndSaveLocation();
+                    if (loc) {
+                        locationOverlay.classList.remove('opacity-100');
+                        locationOverlay.classList.add('opacity-0', 'pointer-events-none');
+                        showToast("Location captured and secured.", "success");
+                    } else {
+                        throw new Error("Location capture failed");
+                    }
+                }
+            } catch (e) {
+                console.error(e);
+                authorizeBtn.disabled = false;
+                authorizeBtn.innerHTML = `Authorize Neural Mapping`;
+                showToast("Permission denied. Verification required.", "error");
+            }
+        });
+
+        // Trigger check on load
+        document.addEventListener('DOMContentLoaded', () => {
+            setTimeout(checkLocationAuth, 1000); // Small delay for aesthetics
+            
+            // Start Vitals Streamer if connected
+            if (!window.vitalsStreamer && typeof VitalsStreamer !== 'undefined') {
+                window.vitalsStreamer = new VitalsStreamer();
+                window.vitalsStreamer.init();
+            }
+        });
+    </script>
+    <script src="js/vitals-streamer.js"></script>
+</body>
+
+</html>

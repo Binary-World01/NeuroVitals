@@ -14,6 +14,7 @@
         rel="stylesheet" />
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="js/supabase-config.js"></script>
+    <script src="js/vitals-streamer.js"></script>
     <script src="js/utils.js"></script>
     <script>
         tailwind.config = {
@@ -397,59 +398,72 @@
 
         async function analyzeSymptoms(data) {
             try {
-                const formData = new FormData();
-                formData.append("name", data.name || "Anonymous");
-                formData.append("age", data.age);
-                formData.append("gender", data.gender);
-                formData.append("symptoms", data.symptoms);
-                formData.append("severity", data.severity);
-                formData.append("duration", data.duration || 1);
-                
-                const response = await fetch(`${BACKEND_URL}/outbreak/analyze`, {
-                    method: "POST",
-                    body: formData
-                });
-
-                if (!response.ok) throw new Error(`Backend Error: ${response.status}`);
-                const result = await response.json();
-                return { analysis: result.analysis, success: true };
-            } catch (error) {
-                console.error("Analyze Error:", error);
-                return { analysis: "AI service error. Please ensure the backend is running.", success: false };
-            }
-        }
-
-        async function generateAdversarialDebate(data) {
-            try {
-                const currentUser = JSON.parse(localStorage.getItem('neurovitals_currentUser') || '{}');
-                const patientProfile = {
-                    patient_id: currentUser.id || "anonymous",
+                console.log("🚀 [API] Routing symptom analysis through backend...");
+                const backendData = {
+                    patient_id: "demo-user",
                     age: parseInt(data.age),
                     gender: data.gender,
                     symptoms: [
                         {
                             description: data.symptoms,
                             severity: parseInt(data.severity) || 5,
-                            duration_days: parseInt(data.duration) || 1
+                            duration_days: 1
                         }
                     ],
                     medical_history: data.history ? [data.history] : [],
                     current_medications: []
                 };
 
-                // Add stored location
-                const storedLoc = JSON.parse(localStorage.getItem('neurovitals_location') || '{}');
-                if (storedLoc.latitude) {
-                    patientProfile.latitude = storedLoc.latitude;
-                    patientProfile.longitude = storedLoc.longitude;
-                    patientProfile.location_city = storedLoc.location_city;
-                    patientProfile.location_country = storedLoc.location_country;
-                }
-
-                const response = await fetch(`${BACKEND_URL}/adversarial/debate`, {
+                const response = await fetch("/api/diagnosis/analyze", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(patientProfile)
+                    body: JSON.stringify(backendData)
+                });
+
+                if (!response.ok) throw new Error(`Backend Error: ${response.status}`);
+                const result = await response.json();
+                
+                return {
+                    diagnosis: result.primary_diagnosis,
+                    confidence: Math.round(result.confidence * 100),
+                    summary: result.reasoning[0] || "Analysis completed.",
+                    reasoning: result.reasoning.map((r, i) => ({
+                        icon: i === 0 ? "neurology" : (i === 1 ? "history" : "description"),
+                        title: `Observation ${i + 1}`,
+                        description: r
+                    })),
+                    recommendation: result.recommendations.join(". ")
+                };
+            } catch (error) {
+                console.error("Analyze Error:", error);
+                return { diagnosis: "Analysis Error", confidence: 0, summary: "Backend error." };
+            }
+        }
+
+        let lastDebateResult = null;
+
+        async function generateAdversarialDebate(data) {
+            try {
+                console.log("🚀 [API] Routing adversarial debate through backend...");
+                const backendData = {
+                    patient_id: "demo-user",
+                    age: parseInt(data.age),
+                    gender: data.gender,
+                    symptoms: [
+                        {
+                            description: data.symptoms,
+                            severity: parseInt(data.severity) || 5,
+                            duration_days: 1
+                        }
+                    ],
+                    medical_history: data.history ? [data.history] : [],
+                    current_medications: []
+                };
+
+                const response = await fetch("/api/adversarial/debate", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(backendData)
                 });
 
                 if (!response.ok) throw new Error(`Backend Error: ${response.status}`);
@@ -460,18 +474,12 @@
                     prosecutor: {
                         diagnosis: result.prosecutor.diagnosis,
                         confidence: Math.round(result.prosecutor.confidence * 100),
-                        points: [
-                            ...result.prosecutor.supporting_evidence.map(e => ({ title: "Supporting Evidence", description: e })),
-                            ...(result.prosecutor.rebuttals_to_alternatives || []).map(e => ({ title: "Rebuttal", description: e }))
-                        ]
+                        points: result.prosecutor.supporting_evidence.map(e => ({ title: "Evidence", description: e }))
                     },
                     defense: {
-                        diagnosis: result.defense.alternative_diagnosis || result.defense.diagnosis,
+                        diagnosis: result.defense.alternative_diagnosis,
                         confidence: Math.round(result.defense.confidence * 100),
-                        points: [
-                            ...result.defense.contradictory_evidence.map(e => ({ title: "Contradiction", description: e })),
-                            { title: "Defense Logic", description: result.defense.why_more_likely || "Alternative etiology suggested." }
-                        ]
+                        points: result.defense.contradictory_evidence.map(e => ({ title: "Counter-Point", description: e }))
                     }
                 };
             } catch (error) {
@@ -481,21 +489,21 @@
         }
 
         async function generateJudgeVerdict(data, prosecutor, defense) {
-            if (window._lastDebateResult) {
+            if (window._lastDebateResult && window._lastDebateResult.verdict) {
                 const result = window._lastDebateResult.verdict;
                 return {
                     verdict: result.final_diagnosis,
                     confidence: Math.round(result.confidence * 100),
-                    highlights: result.recommended_tests || [],
+                    highlights: result.debate_summary ? [result.debate_summary] : [],
                     synthesis: result.synthesis,
-                    next_step: result.debate_summary
+                    next_step: result.recommended_tests[0] || "Consult a specialist."
                 };
             }
             return {
                 verdict: "Verdict Unavailable",
                 confidence: 0,
-                synthesis: "The Judge could not reach a verdict due to connection issues.",
-                next_step: "Consult a human specialist."
+                synthesis: "The Judge could not reach a verdict.",
+                next_step: "Retry the debate."
             };
         }
 

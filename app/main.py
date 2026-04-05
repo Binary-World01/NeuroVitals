@@ -7,7 +7,8 @@ import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
-from app.routers import diagnosis, adversarial, trajectory, community, vitals, risk, outbreak
+from app.routers import diagnosis, adversarial, trajectory, community, vitals, risk, outbreak, medication
+from app.routers.config_router import router as config_router_ref
 
 # Create FastAPI app
 app = FastAPI(
@@ -17,6 +18,7 @@ app = FastAPI(
 )
 
 # CORS middleware
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  # In production, restrict to specific origins
@@ -25,7 +27,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Include routers with global API prefix
+# Include routers with standardized /api prefix
 app.include_router(diagnosis.router, prefix="/api")
 app.include_router(adversarial.router, prefix="/api")
 app.include_router(trajectory.router, prefix="/api")
@@ -33,6 +35,8 @@ app.include_router(community.router, prefix="/api")
 app.include_router(vitals.router, prefix="/api")
 app.include_router(risk.router, prefix="/api")
 app.include_router(outbreak.router, prefix="/api")
+app.include_router(medication.router, prefix="/api")
+app.include_router(config_router_ref, prefix="/api")
 
 
 @app.get("/api/info")
@@ -66,6 +70,11 @@ async def api_info():
                 "map": "/api/outbreak/map",
                 "nearby": "/api/outbreak/map/nearby",
                 "admin": "/api/outbreak/admin"
+            },
+            "medication": {
+                "list": "/api/medications/{user_email}",
+                "add": "/api/medications",
+                "delete": "/api/medications/{id}"
             }
         }
     }
@@ -79,28 +88,31 @@ async def health_check():
         "version": settings.VERSION
     }
 
-# 1. Mount the frontend folder (Only if not on Vercel)
-# Vercel handles static files via vercel.json rewrites
-if not os.environ.get("VERCEL"):
-    app_dir = os.path.dirname(os.path.abspath(__file__)) # /app
-    repo_root = os.path.join(app_dir, "..") # / (root)
-    frontend_path = os.path.join(repo_root, "public") # /public
+# 1. Mount the frontend folders
+# Use absolute path based on this file's location
+app_dir = os.path.dirname(os.path.abspath(__file__))
+public_path = os.path.abspath(os.path.join(app_dir, "..", "public"))
+frontend_path = os.path.abspath(os.path.join(app_dir, "..", "frontend-app"))
 
-    if os.path.exists(frontend_path):
-        app.mount("/", StaticFiles(directory=frontend_path, html=True), name="frontend")
-    
-    # 2. Catch-all route to serve index.html for any frontend route (Local only)
-    @app.get("/{catchall:path}")
-    async def serve_frontend(catchall: str):
+# Mount the more specific route first
+if os.path.exists(frontend_path):
+    app.mount("/app", StaticFiles(directory=frontend_path, html=True), name="frontend")
+
+# Mount public last as a fallback
+if os.path.exists(public_path):
+    app.mount("/", StaticFiles(directory=public_path, html=True), name="public")
+
+# 2. Catch-all route to serve index.html
+@app.get("/{catchall:path}")
+async def serve_frontend(catchall: str):
+    # Try public/index.html first
+    index_file = os.path.join(public_path, "index.html")
+    if not os.path.exists(index_file):
         index_file = os.path.join(frontend_path, "index.html")
-        if os.path.exists(index_file):
-            return FileResponse(index_file)
-        return {"error": "Frontend not found"}
-else:
-    # On Vercel, we might still want a simple health check or info at root if accessed directly
-    @app.get("/")
-    async def root():
-        return {"message": "Neuro-Vitals API is running on Vercel"}
+        
+    if os.path.exists(index_file):
+        return FileResponse(index_file)
+    return {"error": "Frontend not found"}
 
 
 if __name__ == "__main__":

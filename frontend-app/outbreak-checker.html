@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NEURO VITALS</title>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: #000000;
+            background-image:
+                radial-gradient(circle at 15% 25%, rgba(255, 115, 0, 0.18), transparent 45%),
+                radial-gradient(circle at 85% 5%, rgba(255, 80, 0, 0.15), transparent 40%),
+                radial-gradient(circle at 50% 100%, rgba(255, 120, 0, 0.1), transparent 55%);
+            color: #ffffff;
+            padding: 20px;
+        }
+
+        /* LAYOUT */
+        .main-wrapper {
+            display: flex;
+            gap: 30px;
+            max-width: 1200px;
+            margin: auto;
+            align-items: flex-start;
+        }
+
+        /* LEFT FORM */
+        .container {
+            flex: 1;
+            background: rgba(255, 115, 0, 0.04);
+            backdrop-filter: blur(18px);
+            padding: 30px;
+            border-radius: 14px;
+            border: 1px solid rgba(255, 115, 0, 0.25);
+            box-shadow: 0 0 60px rgba(255, 115, 0, 0.12);
+        }
+
+        /* RIGHT ANALYSIS */
+        .analysis-card {
+            width: 420px;
+            min-height: 500px;
+            background: rgba(255, 115, 0, 0.06);
+            backdrop-filter: blur(18px);
+            padding: 25px;
+            border-radius: 14px;
+            border: 1px solid rgba(255, 115, 0, 0.3);
+            box-shadow: 0 0 50px rgba(255, 115, 0, 0.15);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .analysis-card h2 {
+            color: #ff6a00;
+            margin-bottom: 15px;
+        }
+
+        #result {
+            flex: 1;
+            margin-top: 10px;
+            padding: 15px;
+            background: rgba(0, 0, 0, 0.45);
+            border-radius: 10px;
+            white-space: pre-wrap;
+            overflow-y: auto;
+            border-left: 4px solid #ff6a00;
+        }
+
+        /* BUTTONS */
+        button[type="submit"],
+        .gps-retry,
+        .more-btn {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #ff6a00, #ff3c00);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 15px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+
+        .more-btn {
+            display: none;
+            background: linear-gradient(135deg, #ff8800, #ff5500);
+        }
+
+        /* NAVIGATION */
+        .nav-links {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .nav-link {
+            flex: 1;
+            padding: 12px;
+            text-align: center;
+            background: linear-gradient(135deg, #ff6a00, #ff3c00);
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: bold;
+        }
+
+        .nav-link.map {
+            background: linear-gradient(135deg, #ff8800, #ff5500);
+        }
+
+        /* FORM */
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #ff6a00;
+        }
+
+        .form-group {
+            margin-bottom: 18px;
+        }
+
+        label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 6px;
+            color: #ffb366;
+        }
+
+        /* INPUT FIXES */
+        input,
+        select,
+        textarea {
+            width: 100%;
+            padding: 11px;
+            border: 1px solid rgba(255, 115, 0, 0.4);
+            border-radius: 8px;
+            font-size: 14px;
+            background: rgba(0, 0, 0, 0.6) !important;
+            color: #f6f1f1 !important;
+        }
+
+        /* KEEP COLOR AFTER TYPING */
+        input:focus,
+        textarea:focus,
+        select:focus {
+            outline: none;
+            border-color: #ff6a00;
+            background: rgba(0, 0, 0, 0.7) !important;
+            color: #ffffff !important;
+        }
+
+        /* DROPDOWN OPTIONS FIX */
+        select option {
+            background: #000000;
+            color: #ffffff;
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 110px;
+        }
+
+        @media(max-width: 900px) {
+            .main-wrapper {
+                flex-direction: column;
+            }
+
+            .analysis-card {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="nav-links">
+        <a href="outbreak-checker.html" class="nav-link">📋 Symptom Checker</a>
+        <a href="outbreak-map.html" class="nav-link map">🗺️ Outbreak Map</a>
+        <a href="outbreak-admin.html" class="nav-link map">🔐 Admin</a>
+        <a href="dashboard.html" class="nav-link">🏠 Dashboard</a>
+    </div>
+
+    <div class="main-wrapper">
+
+        <!-- LEFT SIDE -->
+        <div class="container">
+
+            <h1>🏥 NEURO VITALS - Symptom Checker</h1>
+
+            <form id="symptomForm" enctype="multipart/form-data">
+
+                <div class="form-group">
+                    <label>Full Name</label>
+                    <input type="text" name="name" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Age</label>
+                    <input type="number" name="age" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Gender</label>
+                    <select name="gender" required>
+                        <option value=""></option>
+                        <option>Male</option>
+                        <option>Female</option>
+                        <option>Other</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Symptoms</label>
+                    <textarea name="symptoms" required></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label>Severity (1-10)</label>
+                    <input type="number" name="severity" min="1" max="10" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Duration (days)</label>
+                    <input type="number" name="duration" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Upload Image (optional)</label>
+
+                    <button type="button" class="gps-retry" onclick="openCamera()">📷 Open Camera</button>
+                    <button type="button" class="gps-retry" onclick="document.getElementById('imageInput').click()">📁
+                        Gallery</button>
+
+                    <input type="file" name="image" id="imageInput" accept="image/*" style="display:none;">
+
+                    <video id="camera" autoplay
+                        style="display:none; width:100%; margin-top:10px; border-radius:8px;"></video>
+
+                    <button type="button" id="captureBtn" class="gps-retry" style="display:none;"
+                        onclick="capturePhoto()">📸 Capture</button>
+
+                    <canvas id="canvas" style="display:none;"></canvas>
+                </div>
+
+                <button type="submit">🔍 Analyze Symptoms</button>
+
+            </form>
+        </div>
+
+        <!-- RIGHT SIDE -->
+        <div class="analysis-card">
+            <h2>🤖 AI Analysis</h2>
+            <div id="result">Your analysis will appear here after submission.</div>
+            <button id="moreAccuracyBtn" class="more-btn">🔎 Want More Accuracy?</button>
+        </div>
+
+    </div>
+
+    <script>
+        let cameraStream = null;
+
+        async function openCamera() {
+            try {
+                cameraStream = await navigator.mediaDevices.getUserMedia({ video: true });
+                const video = document.getElementById("camera");
+                video.style.display = "block";
+                video.srcObject = cameraStream;
+                document.getElementById("captureBtn").style.display = "block";
+            } catch (err) {
+                alert("Camera access denied.");
+            }
+        }
+
+        function capturePhoto() {
+            const video = document.getElementById("camera");
+            const canvas = document.getElementById("canvas");
+
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+
+            const ctx = canvas.getContext("2d");
+            ctx.drawImage(video, 0, 0);
+
+            canvas.toBlob(blob => {
+                const file = new File([blob], "capture.jpg", { type: "image/jpeg" });
+                const dataTransfer = new DataTransfer();
+                dataTransfer.items.add(file);
+                document.getElementById("imageInput").files = dataTransfer.files;
+
+                stopCamera();
+                video.style.display = "none";
+                document.getElementById("captureBtn").style.display = "none";
+            }, "image/jpeg");
+        }
+
+        function stopCamera() {
+            if (cameraStream) {
+                cameraStream.getTracks().forEach(track => track.stop());
+                cameraStream = null;
+            }
+        }
+
+        document.getElementById("symptomForm").addEventListener("submit", async function (e) {
+            e.preventDefault();
+
+            const resultDiv = document.getElementById("result");
+            const moreBtn = document.getElementById("moreAccuracyBtn");
+
+            resultDiv.innerHTML = "Analyzing... ⏳";
+            moreBtn.style.display = "none";
+
+            try {
+                const formData = new FormData(this);
+
+                const currentBase = typeof getApiBase === 'function' ? getApiBase() : "/api";
+
+                const response = await fetch(`${currentBase}/api/outbreak/analyze`, {
+                    method: "POST",
+                    body: formData
+                });
+
+                const data = await response.json();
+                resultDiv.innerHTML = data.analysis || "No response from AI.";
+
+                moreBtn.style.display = "block";
+
+            } catch (error) {
+                resultDiv.innerHTML = "❌ Error connecting to backend.";
+            }
+        });
+    </script>
+
+</body>
+
+</html>

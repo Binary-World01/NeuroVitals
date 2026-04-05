@@ -73,6 +73,7 @@ def save_to_database(
 ) -> int | None:
     try:
         disease_info = DiseaseClassifier.classify_disease(ai_response)
+        form_id = data.get("form_id")
 
         patient_record = {
             "name": data["name"],
@@ -86,7 +87,12 @@ def save_to_database(
             "created_at": datetime.now().isoformat(),
         }
 
-        result = _get_sb().table("records").insert(patient_record).execute()
+        # Use upsert if form_id is provided, otherwise insert
+        if form_id:
+            patient_record["form_id"] = form_id
+            result = _get_sb().table("records").upsert(patient_record, on_conflict="form_id").execute()
+        else:
+            result = _get_sb().table("records").insert(patient_record).execute()
 
         if result.data:
             patient_id = result.data[0]["id"]
@@ -104,9 +110,10 @@ def save_to_database(
                     "disease_type": disease_info["disease_type"],
                     "created_at": datetime.now().isoformat(),
                 }
-                _get_sb().table("admin").insert(admin_record).execute()
+                # Upsert admin record on patient_id to prevent duplicates for the same case
+                _get_sb().table("admin").upsert(admin_record, on_conflict="patient_id").execute()
 
-            logger.info("Saved patient %s (disease: %s)", patient_id, disease_info["disease_type"])
+            logger.info("Saved/Updated patient %s (disease: %s)", patient_id, disease_info["disease_type"])
             return patient_id
 
     except Exception as exc:
