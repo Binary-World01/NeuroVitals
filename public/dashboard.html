@@ -1161,8 +1161,19 @@
         }
 
         async function loadEmergencyContacts(email) {
-            // Placeholder: Not currently stored in medical_forms table
-            console.log("Emergency contacts lookup skipped - adjust schema if needed.");
+            try {
+                const { data, error } = await window.supabaseClient
+                    .from('emergency_contacts')
+                    .select('*')
+                    .eq('user_email', email);
+
+                if (data && data.length > 0) {
+                    const primary = data[0];
+                    window._primaryEmergencyContact = primary;
+                    // Update any UI indicators if they exist
+                    console.log("Emergency contacts loaded:", data.length);
+                }
+            } catch (e) { console.warn("Emergency contact load failed", e); }
         }
 
         // Action Buttons (Placeholders)
@@ -1180,7 +1191,10 @@
 
         // SOS Button
         function triggerSOS() {
-            if (confirm('SAFEGUARD ACTIVE: Are you sure you want to trigger the Emergency Protocol? This will alert Dr. Sharma and your emergency contact (Sister).')) {
+            const contact = window._primaryEmergencyContact;
+            const contactInfo = contact ? `${contact.relationship} (${contact.name})` : 'Emergency Contact';
+            
+            if (confirm(`SAFEGUARD ACTIVE: Are you sure you want to trigger the Emergency Protocol? This will alert Dr. Sharma and your ${contactInfo}.`)) {
                 showToast('Emergency Alert Sent! Help is on the way.', 'error');
                 // Simulate API call
                 setTimeout(() => {

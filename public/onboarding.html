@@ -535,8 +535,35 @@
 
                 if (error) throw error;
 
+                // 2. Save to 'emergency_contacts' table
+                if (emergencyContacts.length > 0) {
+                    // Optional: Clean up old contacts for this email to avoid duplicates
+                    await window.supabaseClient
+                        .from('emergency_contacts')
+                        .delete()
+                        .eq('user_email', currentUser.email);
+
+                    const contactsToInsert = emergencyContacts
+                        .filter(c => c.name.trim() !== '')
+                        .map(c => ({
+                            user_email: currentUser.email,
+                            name: c.name,
+                            relationship: c.relationship,
+                            phonenumber: c.phone
+                        }));
+
+                    if (contactsToInsert.length > 0) {
+                        const { error: contactError } = await window.supabaseClient
+                            .from('emergency_contacts')
+                            .insert(contactsToInsert);
+                        
+                        if (contactError) console.warn("Error saving emergency contacts:", contactError);
+                    }
+                }
+
                 // Also update local storage for immediate dashboard use
                 currentUser.onboardingData = onboardingData;
+                currentUser.emergencyContacts = emergencyContacts;
                 currentUser.onboardingComplete = true;
                 localStorage.setItem('neurovitals_currentUser', JSON.stringify(currentUser));
 
