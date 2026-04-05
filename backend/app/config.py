@@ -27,6 +27,10 @@ class Settings(BaseSettings):
     # GitHub Models (Alternate Gemini Provider)
     GITHUB_TOKEN: Optional[str] = None
     GITHUB_API_URL: str = "https://models.inference.ai.azure.com"
+
+    # Google Fit Configuration
+    GOOGLE_FIT_CLIENT_ID: Optional[str] = None
+    GOOGLE_FIT_CLIENT_SECRET: Optional[str] = None
     
     # Supabase Configuration
     SUPABASE_URL: Optional[str] = None

@@ -35,6 +35,7 @@ app.include_router(vitals.router, prefix="/api")
 app.include_router(risk.router, prefix="/api")
 app.include_router(outbreak.router, prefix="/api")
 app.include_router(medication.router, prefix="/api")
+app.include_router(config_router, prefix="/api")
 
 
 @app.get("/api/info")

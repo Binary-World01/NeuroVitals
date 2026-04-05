@@ -24,6 +24,11 @@ class AdversarialEngine:
             self.use_mock = True
         elif self.provider == "mock":
             self.use_mock = True
+        
+        # User requested: "debatable ai should not give mock data it should only give accurate data"
+        # So we force live mode if tokens are present
+        if self.github_token or self.openai_key:
+            self.use_mock = False
             
         if not self.use_mock:
             try:
@@ -101,7 +106,10 @@ Respond in JSON:
 """
         
         try:
-            model_name = "gpt-4o-mini" if self.provider == "github" else "gpt-4o"
+            # Azure Inference (GitHub Models) typically uses specific model IDs
+            # Standardizing on gpt-4o for accuracy as requested by user
+            model_name = "gpt-4o" if self.provider == "github" else "gpt-4o"
+            
             response = self.client.chat.completions.create(
                 model=model_name,
                 messages=[
@@ -179,7 +187,9 @@ Respond in JSON:
 """
         
         try:
-            model_name = "gpt-4o-mini" if self.groq_key else "gpt-4o-mini" # Consistently use gpt-4o-mini for stability if possible
+            # Defense AI uses Groq (Llama 3.1 70B is highly capable for contradictions)
+            model_name = "llama-3.1-70b-versatile" if self.groq_key else "gpt-4o-mini"
+            
             response = self.groq_client.chat.completions.create(
                 model=model_name,
                 messages=[
@@ -245,7 +255,7 @@ Respond in JSON:
 """
         
         try:
-            model_name = "gpt-4o-mini" if self.provider == "github" else "gpt-4o"
+            model_name = "gpt-4o" if self.provider == "github" else "gpt-4o"
             response = self.client.chat.completions.create(
                 model=model_name,
                 messages=[

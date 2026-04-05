@@ -1160,20 +1160,59 @@
             }
         }
 
+        let globalEmergencyContacts = [];
+
         async function loadEmergencyContacts(email) {
+            console.log(`Attempting to load emergency contacts for: ${email}`);
             try {
-                const { data, error } = await window.supabaseClient
+                // 1. Get the formid for this user
+                const { data: medicalFormData, error: medicalError } = await window.supabaseClient
+                    .from('medical_forms')
+                    .select('formid')
+                    .eq('user_email', email)
+                    .single();
+
+                if (medicalError || !medicalFormData) {
+                    console.error("Could not find medical form for emergency contacts", medicalError);
+                    // Search if multiple exist skip single()
+                    const { data: multipleForms } = await window.supabaseClient
+                        .from('medical_forms')
+                        .select('formid')
+                        .eq('user_email', email);
+                    
+                    if (multipleForms && multipleForms.length > 0) {
+                        console.log("Found multiple forms, using the first one:", multipleForms[0].formid);
+                        medicalFormData = multipleForms[0];
+                    } else {
+                        return;
+                    }
+                }
+
+                const formid = medicalFormData.formid;
+                console.log(`Found formid: ${formid}. Fetching contacts...`);
+
+                // 2. Fetch contacts from 'emergency_contacts' table
+                const { data: contacts, error: contactsError } = await window.supabaseClient
                     .from('emergency_contacts')
                     .select('*')
-                    .eq('user_email', email);
+                    .eq('form_id', formid);
 
-                if (data && data.length > 0) {
-                    const primary = data[0];
-                    window._primaryEmergencyContact = primary;
-                    // Update any UI indicators if they exist
-                    console.log("Emergency contacts loaded:", data.length);
+                if (contactsError) {
+                    console.error("Error fetching emergency contacts from table:", contactsError);
+                    throw contactsError;
                 }
-            } catch (e) { console.warn("Emergency contact load failed", e); }
+
+                globalEmergencyContacts = contacts || [];
+                console.log(`Successfully loaded ${globalEmergencyContacts.length} emergency contacts:`, globalEmergencyContacts);
+
+                // Update UI if needed
+                if (globalEmergencyContacts.length > 0) {
+                    const primaryContact = globalEmergencyContacts[0];
+                    console.log("Primary contact identified:", primaryContact.contact_name);
+                }
+            } catch (err) {
+                console.error("Error in loadEmergencyContacts flow:", err);
+            }
         }
 
         // Action Buttons (Placeholders)
@@ -1191,11 +1230,13 @@
 
         // SOS Button
         function triggerSOS() {
-            const contact = window._primaryEmergencyContact;
-            const contactInfo = contact ? `${contact.relationship} (${contact.name})` : 'Emergency Contact';
-            
-            if (confirm(`SAFEGUARD ACTIVE: Are you sure you want to trigger the Emergency Protocol? This will alert Dr. Sharma and your ${contactInfo}.`)) {
+            const contactNames = globalEmergencyContacts.length > 0 
+                ? globalEmergencyContacts.map(c => `${c.contact_name} (${c.relationship})`).join(', ')
+                : 'Emergency Services';
+
+            if (confirm(`SAFEGUARD ACTIVE: Are you sure you want to trigger the Emergency Protocol? This will alert Dr. Sharma and your emergency contacts: ${contactNames}.`)) {
                 showToast('Emergency Alert Sent! Help is on the way.', 'error');
+                
                 // Simulate API call
                 setTimeout(() => {
                     let lat = 18.5204;
@@ -1204,7 +1245,12 @@
                         const loc = JSON.parse(localStorage.getItem('neurovitals_location'));
                         if (loc && loc.latitude) { lat = loc.latitude; lng = loc.longitude; }
                     } catch(e){}
-                    alert(`Emergency Contacts Notified via SMS and Email.\nLocation Shared: ${lat}° N, ${lng}° E`);
+
+                    const contactDetails = globalEmergencyContacts.length > 0
+                        ? globalEmergencyContacts.map(c => `${c.contact_name}: ${c.e_phonenumber}`).join('\n')
+                        : 'Emergency Services: 911';
+
+                    alert(`Emergency Contacts Notified via SMS and Email.\n\nContacts Notified:\n${contactDetails}\n\nLocation Shared: ${lat}° N, ${lng}° E`);
                 }, 1000);
             }
         }

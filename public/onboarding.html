@@ -497,21 +497,29 @@
         }
 
         async function completeOnboarding() {
+            console.log("Starting onboarding completion process...");
+            
             // Collect all data
             const contactEntries = document.querySelectorAll('.contact-entry');
-            const emergencyContacts = Array.from(contactEntries).map(entry => ({
-                name: entry.querySelector('.emergencyName').value,
-                relationship: entry.querySelector('.emergencyRelationship').value,
-                phone: entry.querySelector('.emergencyPhone').value
-            }));
+            console.log(`Found ${contactEntries.length} contact entries.`);
+            
+            const emergencyContacts = Array.from(contactEntries).map((entry, index) => {
+                const name = entry.querySelector('.emergencyName').value;
+                const relationship = entry.querySelector('.emergencyRelationship').value;
+                const phone = entry.querySelector('.emergencyPhone').value;
+                console.log(`Contact ${index + 1} data:`, { name, relationship, phone });
+                return { name, relationship, phone };
+            });
 
             // Get current user
             const currentUser = JSON.parse(localStorage.getItem('neurovitals_currentUser'));
             if (!currentUser || !currentUser.email) {
+                console.error("No active session found in localStorage.");
                 alert("Session expired. Please log in again.");
                 window.location.href = 'index.html';
                 return;
             }
+            console.log("Current user email:", currentUser.email);
 
             const onboardingData = {
                 user_email: currentUser.email,
@@ -526,51 +534,95 @@
                 food_allergies: document.getElementById('foodAllergies').value,
                 updated_at: new Date().toISOString()
             };
+            console.log("Upserting medical_forms data:", onboardingData);
 
             try {
-                // Save to 'medical_forms' table
-                const { data, error } = await window.supabaseClient
+                // Save to 'medical_forms' table and select to get the formid
+                const { data: medicalFormData, error: medicalError } = await window.supabaseClient
                     .from('medical_forms')
-                    .upsert([onboardingData], { onConflict: 'user_email' });
+                    .upsert([onboardingData], { onConflict: 'user_email' })
+                    .select();
 
-                if (error) throw error;
+                if (medicalError) {
+                    console.error("Error upserting medical_forms:", medicalError);
+                    throw medicalError;
+                }
+                
+                console.log("Medical form response data:", medicalFormData);
 
-                // 2. Save to 'emergency_contacts' table
-                if (emergencyContacts.length > 0) {
-                    // Optional: Clean up old contacts for this email to avoid duplicates
-                    await window.supabaseClient
+                let formid;
+                if (medicalFormData && medicalFormData.length > 0) {
+                    formid = medicalFormData[0].formid;
+                } else {
+                    console.log("Upsert returned no data. Attempting manual select for formid...");
+                    const { data: existingForm, error: selectError } = await window.supabaseClient
+                        .from('medical_forms')
+                        .select('formid')
+                        .eq('user_email', currentUser.email)
+                        .single();
+                        
+                    if (selectError) {
+                        console.error("Error during manual formid lookup:", selectError);
+                        throw selectError;
+                    }
+                    formid = existingForm.formid;
+                }
+                
+                console.log("Target formid for contacts:", formid);
+
+                // Prepare emergency contacts for the 'emergency_contacts' table
+                const contactsToInsert = emergencyContacts
+                    .filter(c => c.name || c.phone) // Be more lenient: save if at least name OR phone is provided
+                    .map(c => ({
+                        form_id: formid,
+                        contact_name: c.name || "Unnamed Contact",
+                        relationship: c.relationship || "Not specified",
+                        e_phonenumber: c.phone || "N/A",
+                        created_at: new Date().toISOString()
+                    }));
+                
+                console.log("Prepared contacts to insert:", contactsToInsert);
+
+                if (contactsToInsert.length > 0) {
+                    console.log("Deleting existing contacts for form_id:", formid);
+                    // First, delete existing contacts for this form_id to avoid duplicates
+                    const { error: deleteError } = await window.supabaseClient
                         .from('emergency_contacts')
                         .delete()
-                        .eq('user_email', currentUser.email);
+                        .eq('form_id', formid);
 
-                    const contactsToInsert = emergencyContacts
-                        .filter(c => c.name.trim() !== '')
-                        .map(c => ({
-                            user_email: currentUser.email,
-                            name: c.name,
-                            relationship: c.relationship,
-                            phonenumber: c.phone
-                        }));
-
-                    if (contactsToInsert.length > 0) {
-                        const { error: contactError } = await window.supabaseClient
-                            .from('emergency_contacts')
-                            .insert(contactsToInsert);
-                        
-                        if (contactError) console.warn("Error saving emergency contacts:", contactError);
+                    if (deleteError) {
+                        console.error("Error deleting old contacts:", deleteError);
+                        // We continue anyway to try insertion
+                    } else {
+                        console.log("Successfully deleted old contacts.");
                     }
+
+                    console.log("Inserting new contacts...");
+                    // Then insert the new contacts
+                    const { error: contactsError } = await window.supabaseClient
+                        .from('emergency_contacts')
+                        .insert(contactsToInsert);
+
+                    if (contactsError) {
+                        console.error("Error inserting new contacts:", contactsError);
+                        throw contactsError;
+                    }
+                    console.log("Successfully inserted contacts.");
+                } else {
+                    console.log("No contacts to insert.");
                 }
 
                 // Also update local storage for immediate dashboard use
                 currentUser.onboardingData = onboardingData;
-                currentUser.emergencyContacts = emergencyContacts;
                 currentUser.onboardingComplete = true;
                 localStorage.setItem('neurovitals_currentUser', JSON.stringify(currentUser));
-
+                
+                console.log("Onboarding complete. Redirecting to dashboard...");
                 window.location.href = 'dashboard.html';
             } catch (err) {
-                console.error("Error saving medical form:", err);
-                alert("Error saving your profile: " + err.message);
+                console.error("Uncaught error in completeOnboarding:", err);
+                alert("Error saving your profile: " + (err.message || JSON.stringify(err)));
             }
         }
 

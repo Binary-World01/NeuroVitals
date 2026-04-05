@@ -4,7 +4,7 @@
  */
 const GoogleFitAPI = (() => {
     // ─── CONFIG ────────────────────────────────────────────────────────────────
-    let CLIENT_ID = '993273774998-s2ftrtqpsambtul5qhkl8mf58pjs8ql0.apps.googleusercontent.com';
+    let CLIENT_ID = ''; 
     let CLIENT_SECRET = ''; // Intentionally blank! We use Implicit Flow for true frontend security.
     const REDIRECT_URI = window.location.origin + window.location.pathname;
 

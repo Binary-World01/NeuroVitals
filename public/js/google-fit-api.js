@@ -3,10 +3,26 @@
  * Complete OAuth 2.0 implementation with fixed sleep data
  */
 const GoogleFitAPI = (() => {
-    // ─── CONFIG ────────────────────────────────────────────────────────────────
-    const CLIENT_ID = 'YOUR_GOOGLE_CLIENT_ID';
-    const CLIENT_SECRET = 'YOUR_GOOGLE_CLIENT_SECRET';
+    // ─── CONFIG (Fetched from Backend) ──────────────────────────────────────────
+    let CLIENT_ID = '';
     const REDIRECT_URI = window.location.origin + '/integrations.html';
+
+    /**
+     * INITIALIZATION
+     * Fetches the public client configuration from the backend.
+     */
+    async function init() {
+        try {
+            const resp = await fetch('/api/config/google-fit');
+            const config = await resp.json();
+            CLIENT_ID = config.client_id;
+            console.log('✅ [GoogleFit] Config initialized from backend');
+            return true;
+        } catch (err) {
+            console.error('❌ [GoogleFit] Failed to fetch config:', err);
+            return false;
+        }
+    }
 
     const SCOPES = [
         'https://www.googleapis.com/auth/fitness.activity.read',
@@ -69,14 +85,11 @@ const GoogleFitAPI = (() => {
         try {
             console.log('Refreshing access token...');
 
-            const response = await fetch(TOKEN_URL, {
+            const response = await fetch('/api/config/google-fit/refresh', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                 body: new URLSearchParams({
-                    client_id: CLIENT_ID,
-                    client_secret: CLIENT_SECRET,
-                    refresh_token: oldRefreshToken,
-                    grant_type: 'refresh_token'
+                    refresh_token: oldRefreshToken
                 })
             });
 
@@ -160,17 +173,14 @@ const GoogleFitAPI = (() => {
         try {
             log('Exchanging code for token...', 'text-blue-400');
 
-            const response = await fetch(TOKEN_URL, {
+            const response = await fetch('/api/config/google-fit/exchange', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/x-www-form-urlencoded',
                 },
                 body: new URLSearchParams({
                     code: code,
-                    client_id: CLIENT_ID,
-                    client_secret: CLIENT_SECRET,
-                    redirect_uri: REDIRECT_URI,
-                    grant_type: 'authorization_code'
+                    redirect_uri: REDIRECT_URI
                 })
             });
 

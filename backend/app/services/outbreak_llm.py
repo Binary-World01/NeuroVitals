@@ -115,11 +115,11 @@ def analyze_symptoms_with_gemini(data: dict, image_file=None) -> dict:
         Symptoms: {data['symptoms']}
         Severity: {data['severity']}/10, Duration: {data['duration']} days
         Format your response as:
-        POSSIBLE CONDITION: [name]
-        EXPLANATION: [simple explanation]
-        PRECAUTIONS: [3-4 specific safety measures]
-        NEXT STEPS: [recommendations]
-        DISCLAIMER: This is an AI analysis and not a medical diagnosis.
+        [SENTINEL_CONDITION] [name]
+        [SENTINEL_EXPLANATION] [simple explanation]
+        [SENTINEL_PRECAUTIONS] [3-4 specific safety measures]
+        [SENTINEL_NEXT_STEPS] [specific recommendations]
+        [SENTINEL_DISCLAIMER] This is an AI analysis and not a medical diagnosis.
         """
 
         # 1. Try Google Gemini SDK

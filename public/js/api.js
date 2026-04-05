@@ -121,251 +121,92 @@ async function analyzeSymptoms(data) {
 }
 
 
-const GROQ_API_KEY = "YOUR_GROQ_API_KEY_HERE";
-const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
-
 /**
- * Orchestrates the Adversarial Debate (Gemini vs Groq)
+ * Orchestrates the Adversarial Debate (Now routed through backend)
  * @param {Object} data - Patient data
  * @returns {Promise<Object>} - Prosecutor and Defense arguments
  */
 async function generateAdversarialDebate(data) {
-    // 1. PROSECUTOR (Gemini) - Argues for the most likely common diagnosis
-    const prosecutorPrompt = `
-        You are the 'Prosecutor AI' in a medical diagnosis debate.
-        Patient: Age ${data.age}, ${data.gender}, Symptoms: "${data.symptoms}".
-        
-        Your Goal: aggressive advocacy for the MOST LIKELY standard diagnosis (e.g., Multiple Sclerosis, Migraine, Stroke).
-        
-        Return JSON safely:
-        {
-            "diagnosis": "Name of Diagnosis",
-            "hypothesis": "Short 1-sentence hypothesis.",
-            "confidence": <Calculated Number 0-100 based on evidence strength>,
-            "points": [
-                { "title": "Evidence A", "description": "Why this supports your diagnosis." },
-                { "title": "Evidence B", "description": "Why this supports your diagnosis." }
-            ]
-        }
-        IMPORTANT: Do not use real newlines in string values. Use escaped \\n only.
-        IMPORTANT: "confidence" MUST be a dynamic number (e.g. 88, 92, 74) reflecting how well the symptoms match the diagnosis. Do not use 85.
-    `;
-
-    // 2. DEFENSE (Groq/Llama3) - Argues for a rare/alternative diagnosis
-    // We construct this logic to run sequentially or parallel. For better context, sequential is smarter but slower.
-    // Let's run Prosecutor first.
-
-    let prosecutorResult = null;
-    let usedFallback = false;
-
-    // ATTEMPT 1: GEMINI (Primary)
     try {
-        const geminiResp = await fetchWithRetry(`${GEMINI_URL}?key=${GEMINI_API_KEY}`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                contents: [{ parts: [{ text: prosecutorPrompt }] }],
-                generationConfig: { responseMimeType: "application/json" }
-            })
-        });
-        const geminiJson = await geminiResp.json();
-        prosecutorResult = cleanAndParseJSON(geminiJson.candidates[0].content.parts[0].text);
-    } catch (e) {
-        console.warn("Prosecutor (Gemini) Failed. Attempting Fallback to Groq...", e);
-        usedFallback = true;
-    }
-
-    // ATTEMPT 2: GROQ (Fallback for Prosecutor) if Gemini failed
-    if (!prosecutorResult && usedFallback) {
-        try {
-            const fallbackResp = await fetchWithRetry(GROQ_URL, {
-                method: "POST",
-                headers: {
-                    "Authorization": `Bearer ${GROQ_API_KEY}`,
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify({
-                    model: "llama-3.1-8b-instant",
-                    messages: [{ role: "user", content: prosecutorPrompt }]
-                })
-            });
-            const fallbackJson = await fallbackResp.json();
-            prosecutorResult = cleanAndParseJSON(fallbackJson.choices[0].message.content);
-            if (prosecutorResult) {
-                // Annotate that this came from fallback
-                prosecutorResult.hypothesis += " (Generated via Fallback Model due to High Traffic)";
-            }
-        } catch (fallbackError) {
-            console.error("Prosecutor Fallback also failed:", fallbackError);
-        }
-    }
-
-    // Fallback if Prosecutor fails
-    if (!prosecutorResult) {
-        prosecutorResult = {
-            diagnosis: "Diagnosis Unavailable",
-            hypothesis: "Unable to generate hypothesis due to connection error.",
-            confidence: 0,
-            points: []
+        console.log("🚀 [API] Routing adversarial debate through backend...");
+        
+        const backendData = {
+            age: parseInt(data.age),
+            gender: data.gender,
+            symptoms: [
+                {
+                    description: data.symptoms,
+                    severity: 3, // Default for debate
+                    duration_days: 1
+                }
+            ],
+            medical_history: data.history ? [data.history] : [],
+            current_medications: []
         };
-    }
 
-    // 3. DEFENSE (Groq) calls
-    const defensePrompt = `
-        You are the 'Defense AI' in a medical debate.
-        Patient: Age ${data.age}, ${data.gender}, Symptoms: "${data.symptoms}".
-        
-        The Prosecutor AI has argued for: "${prosecutorResult.diagnosis}".
-        
-        Your Goal: Find a RARE or ALTERNATIVE diagnosis that fits the facts but contradicts the Prosecutor. Be creative and critical.
-        
-        Return JSON only:
-        {
-            "diagnosis": "Alternative Diagnosis Name",
-            "hypothesis": "Why the Prosecutor might be wrong.",
-            "confidence": <Calculated Number 0-100 based on plausibility>,
-            "points": [
-                { "title": "Counter-Point A", "description": "Evidence typical for this rare condition." },
-                { "title": "Counter-Point B", "description": "Why the prosecutor's evidence is flawed." }
-            ]
-        }
-        IMPORTANT: Do not use real newlines in string values. Use escaped \\n only.
-        IMPORTANT: "confidence" MUST be a dynamic number (e.g. 65, 78, 40) reflecting the plausibility of this alternative. Do not use 75.
-    `;
-
-    let defenseResult = null;
-    try {
-        const groqResp = await fetchWithRetry(GROQ_URL, {
+        const response = await fetch("/api/adversarial/debate", {
             method: "POST",
             headers: {
-                "Authorization": `Bearer ${GROQ_API_KEY}`,
                 "Content-Type": "application/json"
             },
-            body: JSON.stringify({
-                model: "llama-3.1-8b-instant",
-                messages: [{ role: "user", content: defensePrompt }]
-            })
+            body: JSON.stringify(backendData)
         });
-        const groqJson = await groqResp.json();
-        defenseResult = cleanAndParseJSON(groqJson.choices[0].message.content);
-    } catch (e) {
-        console.error("Defense Error:", e);
-    }
 
-    // Fallback if Defense fails
-    if (!defenseResult) {
-        defenseResult = {
-            diagnosis: "Challenge Unavailable",
-            hypothesis: "Defense system offline.",
-            confidence: 0,
-            points: []
+        if (!response.ok) {
+            throw new Error(`Backend Error: ${response.status}`);
+        }
+
+        const result = await response.json();
+        
+        // Cache the verdict for the next call to generateJudgeVerdict
+        window._lastDebatResult = result;
+
+        // Map back to expected format
+        return {
+            prosecutor: {
+                diagnosis: result.prosecutor.diagnosis,
+                confidence: result.prosecutor.confidence,
+                points: result.prosecutor.points
+            },
+            defense: {
+                diagnosis: result.defense.diagnosis,
+                confidence: result.defense.confidence,
+                points: result.defense.points
+            }
+        };
+
+    } catch (error) {
+        console.error("Adversarial Debate Error:", error);
+        throw error;
+    }
+}
+
+/**
+ * JUDGE AI - Returns the verdict from the cached backend result
+ */
+async function generateJudgeVerdict(data, prosecutor, defense) {
+    // If we have a cached result from the same session, use it
+    if (window._lastDebatResult) {
+        const v = window._lastDebatResult.verdict;
+        return {
+            verdict: v.verdict,
+            confidence: v.confidence,
+            synthesis: v.synthesis,
+            next_step: v.next_step,
+            highlights: v.highlights || []
         };
     }
-
+    
+    // Fallback if called directly without generateAdversarialDebate (unlikely)
     return {
-        prosecutor: prosecutorResult,
-        defense: defenseResult
+        verdict: "Verdict Delayed",
+        confidence: 0,
+        synthesis: "The Judge requires a full debate to conclude.",
+        next_step: "Restart the simulation."
     };
 }
 
-
-// Export for module usage (if using modules) or window global
-/**
- * JUDGE AI (Gemini) - Synthesizes the debate and renders a verdict
- * @param {Object} data - Patient data
- * @param {Object} prosecutor - Prosecutor's argument
- * @param {Object} defense - Defense's argument
- * @returns {Promise<Object>} - Final verdict
- */
-async function generateJudgeVerdict(data, prosecutor, defense) {
-    const judgePrompt = `
-        You are the 'Judge AI', a supreme medical authority.
-        Review the following case and the arguments from the Prosecutor and Defense AI models.
-        
-        Patient: Age ${data.age}, ${data.gender}, Symptoms: "${data.symptoms}".
-        
-        1. Prosecutor Argument (Standard Diagnosis): "${prosecutor.diagnosis}"
-           - Points: ${JSON.stringify(prosecutor.points)}
-           
-        2. Defense Argument (Alternative Diagnosis): "${defense.diagnosis}"
-           - Points: ${JSON.stringify(defense.points)}
-        
-        Your Goal: Evaluate which diagnosis is more clinically probable based on the evidence. 
-        Note: If the Prosecutor's standard diagnosis is strong, favour it. If the Defense highlights a critical red flag (e.g. "but the patient has no fever"), favour the alternative.
-        
-        Return JSON only:
-        {
-            "verdict": "Name of the Winning Diagnosis",
-            "confidence": <Calculated Number 0-100 based on certainty>,
-            "synthesis": "Brief explanation of why you chose this verdict over the other.",
-            "next_step": "The single most important next test or action."
-        }
-        IMPORTANT: Do not use real newlines in string values. Use escaped \\n only.
-        IMPORTANT: "confidence" MUST be a dynamic number reflecting your certainty. Do not use 92.
-    `;
-
-    let judgeResult = null;
-    let usedFallback = false;
-
-    // ATTEMPT 1: Gemini (Primary Judge)
-    try {
-        const response = await fetchWithRetry(`${GEMINI_URL}?key=${GEMINI_API_KEY}`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                contents: [{ parts: [{ text: judgePrompt }] }],
-                generationConfig: { responseMimeType: "application/json" }
-            })
-        });
-
-        const result = await response.json();
-        judgeResult = cleanAndParseJSON(result.candidates[0].content.parts[0].text);
-
-        if (!judgeResult) throw new Error("Failed to parse Judge response");
-
-    } catch (e) {
-        console.warn("Judge (Gemini) Failed. Fallback to Groq...", e);
-        usedFallback = true;
-    }
-
-    // ATTEMPT 2: Groq (Fallback Judge)
-    if (!judgeResult && usedFallback) {
-        try {
-            const fallbackResp = await fetchWithRetry(GROQ_URL, {
-                method: "POST",
-                headers: {
-                    "Authorization": `Bearer ${GROQ_API_KEY}`,
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify({
-                    model: "llama-3.1-8b-instant",
-                    messages: [{ role: "user", content: judgePrompt }]
-                })
-            });
-            const fallbackJson = await fallbackResp.json();
-            judgeResult = cleanAndParseJSON(fallbackJson.choices[0].message.content);
-            if (judgeResult) {
-                judgeResult.synthesis += " (Verdict rendered by Backup System)";
-            }
-        } catch (fallbackError) {
-            console.error("Judge Fallback also failed:", fallbackError);
-        }
-    }
-
-    // Final Fallback
-    if (!judgeResult) {
-        return {
-            verdict: "Verdict Unavailable",
-            confidence: 0,
-            synthesis: "The Judge could not reach a verdict due to connection issues.",
-            next_step: "Consult a human specialist."
-        };
-    }
-
-    return judgeResult;
-}
-
-// Export for module usage (if using modules) or window global
+// Export for window global
 window.neuroApi = {
     analyzeSymptoms,
     generateAdversarialDebate,

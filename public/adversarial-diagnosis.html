@@ -474,12 +474,18 @@
                     prosecutor: {
                         diagnosis: result.prosecutor.diagnosis,
                         confidence: Math.round(result.prosecutor.confidence * 100),
-                        points: result.prosecutor.supporting_evidence.map(e => ({ title: "Evidence", description: e }))
+                        points: (result.prosecutor.points || []).map(p => ({ 
+                            title: p.title || "Evidence", 
+                            description: p.description || p 
+                        }))
                     },
                     defense: {
-                        diagnosis: result.defense.alternative_diagnosis,
+                        diagnosis: result.defense.diagnosis || result.defense.alternative_diagnosis,
                         confidence: Math.round(result.defense.confidence * 100),
-                        points: result.defense.contradictory_evidence.map(e => ({ title: "Counter-Point", description: e }))
+                        points: (result.defense.points || []).map(p => ({ 
+                            title: p.title || "Counter-Point", 
+                            description: p.description || p 
+                        }))
                     }
                 };
             } catch (error) {
@@ -492,11 +498,11 @@
             if (window._lastDebateResult && window._lastDebateResult.verdict) {
                 const result = window._lastDebateResult.verdict;
                 return {
-                    verdict: result.final_diagnosis,
+                    verdict: result.verdict || result.final_diagnosis,
                     confidence: Math.round(result.confidence * 100),
-                    highlights: result.debate_summary ? [result.debate_summary] : [],
+                    highlights: result.highlights || (result.debate_summary ? [result.debate_summary] : []),
                     synthesis: result.synthesis,
-                    next_step: result.recommended_tests[0] || "Consult a specialist."
+                    next_step: result.next_step || (result.recommended_tests ? result.recommended_tests[0] : "Consult a specialist.")
                 };
             }
             return {

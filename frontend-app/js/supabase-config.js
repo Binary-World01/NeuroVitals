@@ -1,6 +1,27 @@
-const SUPABASE_URL = "https://raboyinovwxdynswpoak.supabase.co";
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJhYm95aW5vdnd4ZHluc3dwb2FrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE2NjA5NzIsImV4cCI6MjA4NzIzNjk3Mn0.bh3R2qcAFIwhbJ3BoBQXWv9NdlYeKBt7a25CCQYb50A";
+/**
+ * Supabase Configuration — Neuro-Vitals (App)
+ * Fetched dynamically from the backend to prevent secret leakage.
+ */
+(async () => {
+    try {
+        const resp = await fetch('/api/config/app-config');
+        const config = await resp.json();
+        
+        const SUPABASE_URL = config.supabase_url;
+        const SUPABASE_ANON_KEY = config.supabase_anon_key;
+        
+        if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+            console.error("❌ [Supabase] Config missing from backend");
+            return;
+        }
 
-const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-window.supabaseClient = supabaseClient;
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        window.supabaseClient = supabaseClient;
+        
+        console.log("✅ [Supabase/App] Client initialized from backend config");
+        window.dispatchEvent(new CustomEvent('supabaseReady', { detail: supabaseClient }));
+        
+    } catch (err) {
+        console.error("❌ [Supabase/App] Initialization failed:", err);
+    }
+})();

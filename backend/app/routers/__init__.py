@@ -7,3 +7,5 @@ from .community import router as community_router
 from .vitals import router as vitals_router
 from .risk import router as risk_router
 from .outbreak import router as outbreak_router
+from .config import router as config_router
+from .medication import router as medication_router
